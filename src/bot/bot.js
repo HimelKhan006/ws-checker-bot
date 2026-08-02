@@ -13,6 +13,7 @@ const {
   registerConnectionHandlers,
   handlePairingPhoneNumberInput
 } = require('./handlers/connectionHandler');
+const { extractPhoneNumbers } = require('../utils/numberParser');
 const {
   registerCheckHandlers,
   handleSingleNumberInput,
@@ -982,14 +983,14 @@ function createBot(token) {
     }
 
     if (isConnected) {
-      if (state === 'AWAITING_CHECK_INPUT' || state === 'AWAITING_BULK_INPUT' || state === 'AWAITING_SINGLE_NUMBER') {
+      const text = ctx.message?.text?.trim() || '';
+      const hasDoc = !!ctx.message?.document;
+      const extracted = extractPhoneNumbers(text);
+
+      if (hasDoc || extracted.length > 0 || state === 'AWAITING_CHECK_INPUT' || state === 'AWAITING_BULK_INPUT' || state === 'AWAITING_SINGLE_NUMBER') {
         return handleBulkCheckInput(ctx);
       } else {
-        return ctx.reply(
-          `🔍 *WhatsApp Checking Engine*\n\n` +
-          `Please tap \`/check\` (*Start Checking*) from the menu to start checking phone numbers!`,
-          { parse_mode: 'Markdown' }
-        );
+        return sendMainMenu(ctx);
       }
     }
 

@@ -177,15 +177,6 @@ function fetchFileContent(fileUrl) {
 
 async function handleBulkCheckInput(ctx) {
   const userId = ctx.from.id;
-
-  // Enforce Reply to Check Prompt Message
-  if (!ctx.message.reply_to_message) {
-    return ctx.reply(
-      `⚠️ *Reply Required*\n\nPlease tap/swipe and **Reply** directly to the *WhatsApp Registration Checking Engine* prompt message to check phone numbers or upload files!`,
-      { reply_to_message_id: ctx.message.message_id, parse_mode: 'Markdown' }
-    );
-  }
-
   ctx.session.state = null;
   let rawContent = '';
 
