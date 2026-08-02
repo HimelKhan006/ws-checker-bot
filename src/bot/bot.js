@@ -720,6 +720,13 @@ function createBot(token) {
 
   // Router for user text messages (Checking starts ONLY after clicking /check or active state!)
   bot.on('text', async (ctx, next) => {
+    const text = ctx.message?.text?.trim() || '';
+
+    // Ignore commands starting with '/' so command handlers process them exclusively
+    if (text.startsWith('/')) {
+      return next();
+    }
+
     const userId = ctx.from.id;
     const isConnected = sessionManager.isConnected(userId);
     const state = ctx.session.state;
