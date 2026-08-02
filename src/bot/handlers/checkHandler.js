@@ -30,7 +30,7 @@ function registerCheckHandlers(bot) {
     return ctx.editMessageText(
       `🔍 *Send WhatsApp Phone Number*\n\n` +
       `Send any phone number directly in message to check status.\n\n` +
-      `*Example:* \`8801700000000\``,
+      `*Example:* \`88018XXXXXXXX\``,
       { parse_mode: 'Markdown', ...getCancelKeyboard() }
     );
   });
@@ -121,7 +121,7 @@ async function handleSingleNumberInput(ctx) {
   const cleanNum = cleanPhoneNumber(text);
   if (!cleanNum) {
     return ctx.reply(
-      `❌ *Invalid Phone Number*\n\nPlease enter a valid number with country code (e.g. \`8801700000000\`).`,
+      `❌ *Invalid Phone Number*\n\nPlease enter a valid number with country code (e.g. \`88018XXXXXXXX\`).`,
       { parse_mode: 'Markdown' }
     );
   }

@@ -337,7 +337,7 @@ function createBot(token) {
       `🔍 *WhatsApp Registration Checking Engine*\n\n` +
       `⚡ *System Ready for Checking!*\n` +
       `Please **REPLY** to this message with your phone numbers or files:\n\n` +
-      `• *Single number:* Reply with number (e.g. \`8801700000000\`)\n` +
+      `• *Single number:* Reply with number (e.g. \`88018XXXXXXXX\`)\n` +
       `• *Bulk numbers:* Reply with multiple numbers\n` +
       `• *File check:* Reply with a \`.txt\` or \`.csv\` file!`,
       {

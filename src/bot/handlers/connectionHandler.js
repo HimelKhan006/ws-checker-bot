@@ -45,7 +45,7 @@ function registerConnectionHandlers(bot) {
       `⚠️ *WhatsApp Account Not Connected*\n` +
       `Please connect your WhatsApp account to start checking.\n\n` +
       `1️⃣ *Send your phone number with country code below*\n` +
-      `   *Example:* \`8801700000000\`\n\n` +
+      `   *Example:* \`88018XXXXXXXX\`\n\n` +
       `2️⃣ Or tap 📷 *Connect via QR Code* below:`,
       {
         parse_mode: 'Markdown',
@@ -68,7 +68,7 @@ function registerConnectionHandlers(bot) {
     const msg = await ctx.editMessageText(
       `🔢 *Connect via Pairing Code*\n\n` +
       `Please *REPLY* to this message with your WhatsApp phone number including country code.\n\n` +
-      `*Example:* \`8801700000000\`\n\n` +
+      `*Example:* \`88018XXXXXXXX\`\n\n` +
       `_Type your number below:_`,
       {
         parse_mode: 'Markdown',
@@ -378,7 +378,7 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
     const errPrompt = await ctx.reply(
       `❌ *Invalid Phone Number Format*\n\n` +
       `Please provide a valid phone number with country code.\n` +
-      `*Example:* \`8801700000000\` or \`+8801700000000\``,
+      `*Example:* \`88018XXXXXXXX\` or \`+88018XXXXXXXX\``,
       {
         reply_to_message_id: ctx.message?.message_id,
         parse_mode: 'Markdown',
