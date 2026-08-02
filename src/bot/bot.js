@@ -358,13 +358,10 @@ function createBot(token) {
     return sendMainMenu(ctx, '🏠 *Main Menu*');
   });
 
-  // /clear command — Professional Animated Chat Cleaner
-  bot.command('clear', async (ctx) => {
+  // Helper function to execute 100% reliable chat cleaner without zero-message gaps
+  const executeChatCleaner = async (ctx) => {
     const chatId = ctx.chat.id;
-    const cmdMsgId = ctx.message?.message_id || 0;
-
-    // Instantly delete the /clear command message
-    if (cmdMsgId) ctx.telegram.deleteMessage(chatId, cmdMsgId).catch(() => {});
+    const triggerMsgId = ctx.message?.message_id || ctx.callbackQuery?.message?.message_id || 0;
 
     // Reset active session state & timers
     if (ctx.session.pairingTimer) { clearInterval(ctx.session.pairingTimer); ctx.session.pairingTimer = null; }
@@ -372,100 +369,36 @@ function createBot(token) {
     ctx.session.state = null;
     ctx.session.pairingPromptMsgId = null;
 
-    // Step 1: Send initial Animated Cleaner card (10%)
-    const cleanerMsg = await ctx.reply(
-      `🧹 *Professional Chat Cleaner*\n\n` +
-      `⏳ *Status:* Initializing chat sweep...\n` +
-      `\`[▓░░░░░░░░░] 10%\`\n\n` +
-      `_Scanning & purging temporary logs and message history..._`,
-      { parse_mode: 'Markdown' }
-    ).catch(() => null);
+    // STEP 1: Send fresh Main Menu card FIRST (guarantees chat never drops to 0 messages!)
+    const freshMenuMsg = await sendMainMenu(ctx, '🚀 *Bot Main Menu*').catch(() => null);
+    const anchorMsgId = freshMenuMsg?.message_id || 0;
 
-    const statusMsgId = cleanerMsg?.message_id || 0;
-
-    // Step 2: Build set of message IDs to delete
+    // STEP 2: Collect all old message IDs to delete (skipping anchorMsgId & protected broadcasts)
     const idsToDelete = new Set();
+    if (triggerMsgId && triggerMsgId !== anchorMsgId) idsToDelete.add(triggerMsgId);
+
     if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
-      ctx.session.tempMsgIds.forEach(id => idsToDelete.add(id));
+      ctx.session.tempMsgIds.forEach(id => {
+        if (id !== anchorMsgId) idsToDelete.add(id);
+      });
       ctx.session.tempMsgIds = [];
     }
 
-    for (let id = cmdMsgId - 1; id >= Math.max(1, cmdMsgId - 150); id--) {
-      if (id !== statusMsgId && !db.isMessageProtected(chatId, id)) idsToDelete.add(id);
-    }
-
-    // Step 3: Animate progress bar to 55%
-    await new Promise(r => setTimeout(r, 200));
-    if (statusMsgId) {
-      await ctx.telegram.editMessageText(
-        chatId, statusMsgId, null,
-        `🧹 *Professional Chat Cleaner*\n\n` +
-        `✨ *Status:* Purging message history...\n` +
-        `\`[▓▓▓▓▓░░░░░] 55%\`\n\n` +
-        `_Clearing conversation cache & temporary cards..._`,
-        { parse_mode: 'Markdown' }
-      ).catch(() => {});
-    }
-
-    // Step 4: Execute parallel deletion sweep
-    const ids = [...idsToDelete];
-    await Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(chatId, mId)));
-
-    // Step 5: Animate progress bar to 100%
-    if (statusMsgId) {
-      await ctx.telegram.editMessageText(
-        chatId, statusMsgId, null,
-        `🧹 *Professional Chat Cleaner*\n\n` +
-        `✅ *Status:* Chat 100% Cleaned & Purged!\n` +
-        `\`[▓▓▓▓▓▓▓▓▓▓] 100%\`\n\n` +
-        `_Starting fresh session..._`,
-        { parse_mode: 'Markdown' }
-      ).catch(() => {});
-    }
-
-    await new Promise(r => setTimeout(r, 350));
-
-    // Step 6: Edit animated card in-place into Main Menu card!
-    const userId = ctx.from.id;
-    const isConnected = sessionManager.isConnected(userId);
-    const session = sessionManager.getSession(userId);
-
-    if (!isConnected) {
-      await ctx.telegram.editMessageText(
-        chatId, statusMsgId, null,
-        `🚀 *Bot Main Menu*\n\n` +
-        `⚠️ *WhatsApp Account Not Connected*\n` +
-        `Please connect your WhatsApp account to start checking.\n\n` +
-        `Tap the button below to connect your WhatsApp account:`,
-        {
-          parse_mode: 'Markdown',
-          ...Markup.inlineKeyboard([[Markup.button.callback('🔗 Connect WhatsApp Account', 'MENU_CONNECT')]])
-        }
-      ).catch(() => {});
-      return;
-    }
-
-    const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
-    let numDisplay = '••••••••••';
-    if (cleanNum.length > 7) {
-      numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
-    } else if (cleanNum) {
-      numDisplay = `+${cleanNum.substring(0, 3)}****`;
-    }
-
-    await ctx.telegram.editMessageText(
-      chatId, statusMsgId, null,
-      `🚀 *Bot Main Menu*\n\n` +
-      `🎉 *WhatsApp Account Connected & Active!*\n\n` +
-      `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
-      `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
-      `⚡ *WhatsApp Checking Engine:* Ready!\n` +
-      `Tap \`/check\` from the menu to start checking numbers!`,
-      {
-        parse_mode: 'Markdown',
-        ...getMainMenuKeyboard(true, false)
+    const startId = (triggerMsgId || anchorMsgId) + 5;
+    for (let id = startId; id >= Math.max(1, startId - 250); id--) {
+      if (id !== anchorMsgId && !db.isMessageProtected(chatId, id)) {
+        idsToDelete.add(id);
       }
-    ).catch(() => {});
+    }
+
+    // STEP 3: Fire parallel non-blocking background sweep for all older messages
+    const ids = [...idsToDelete];
+    Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(chatId, mId))).catch(() => {});
+  };
+
+  // /clear command — Professional Chat History Cleaner
+  bot.command('clear', async (ctx) => {
+    return executeChatCleaner(ctx);
   });
 
   // /guide command
@@ -787,113 +720,10 @@ function createBot(token) {
     return sendMainMenu(ctx, '🏠 *Main Menu*');
   });
 
-  // 🧹 Clear Chat Action — Professional Animated Cleaner
+  // 🧹 Clear Chat Action — Reliable Chat History Cleaner
   bot.action('CLEAR_CHAT', async (ctx) => {
-    await ctx.answerCbQuery('🧹 Starting chat cleaner...').catch(() => {});
-    const chatId = ctx.chat.id;
-    const clickedMsgId = ctx.callbackQuery?.message?.message_id || 0;
-
-    // Reset active session state & timers
-    if (ctx.session.pairingTimer) { clearInterval(ctx.session.pairingTimer); ctx.session.pairingTimer = null; }
-    if (ctx.session.qrTimer) { clearTimeout(ctx.session.qrTimer); ctx.session.qrTimer = null; }
-    ctx.session.state = null;
-    ctx.session.pairingPromptMsgId = null;
-
-    // Edit clicked message into initial Animated Cleaner card (10%)
-    const statusMsgId = clickedMsgId;
-    if (statusMsgId) {
-      await ctx.editMessageText(
-        `🧹 *Professional Chat Cleaner*\n\n` +
-        `⏳ *Status:* Initializing chat sweep...\n` +
-        `\`[▓░░░░░░░░░] 10%\`\n\n` +
-        `_Scanning & purging temporary logs and message history..._`,
-        { parse_mode: 'Markdown' }
-      ).catch(() => {});
-    }
-
-    // Build set of message IDs to delete
-    const idsToDelete = new Set();
-    if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
-      ctx.session.tempMsgIds.forEach(id => idsToDelete.add(id));
-      ctx.session.tempMsgIds = [];
-    }
-
-    for (let id = statusMsgId - 1; id >= Math.max(1, statusMsgId - 150); id--) {
-      if (id !== statusMsgId && !db.isMessageProtected(chatId, id)) idsToDelete.add(id);
-    }
-
-    // Animate to 55%
-    await new Promise(r => setTimeout(r, 200));
-    if (statusMsgId) {
-      await ctx.telegram.editMessageText(
-        chatId, statusMsgId, null,
-        `🧹 *Professional Chat Cleaner*\n\n` +
-        `✨ *Status:* Purging message history...\n` +
-        `\`[▓▓▓▓▓░░░░░] 55%\`\n\n` +
-        `_Clearing conversation cache & temporary cards..._`,
-        { parse_mode: 'Markdown' }
-      ).catch(() => {});
-    }
-
-    // Execute parallel deletion sweep
-    const ids = [...idsToDelete];
-    await Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(chatId, mId)));
-
-    // Animate to 100% COMPLETE!
-    if (statusMsgId) {
-      await ctx.telegram.editMessageText(
-        chatId, statusMsgId, null,
-        `🧹 *Professional Chat Cleaner*\n\n` +
-        `✅ *Status:* Chat 100% Cleaned & Purged!\n` +
-        `\`[▓▓▓▓▓▓▓▓▓▓] 100%\`\n\n` +
-        `_Starting fresh session..._`,
-        { parse_mode: 'Markdown' }
-      ).catch(() => {});
-    }
-
-    await new Promise(r => setTimeout(r, 350));
-
-    // Edit animated card in-place into Main Menu card!
-    const userId = ctx.from.id;
-    const isConnected = sessionManager.isConnected(userId);
-    const session = sessionManager.getSession(userId);
-
-    if (!isConnected) {
-      await ctx.telegram.editMessageText(
-        chatId, statusMsgId, null,
-        `🚀 *Bot Main Menu*\n\n` +
-        `⚠️ *WhatsApp Account Not Connected*\n` +
-        `Please connect your WhatsApp account to start checking.\n\n` +
-        `Tap the button below to connect your WhatsApp account:`,
-        {
-          parse_mode: 'Markdown',
-          ...Markup.inlineKeyboard([[Markup.button.callback('🔗 Connect WhatsApp Account', 'MENU_CONNECT')]])
-        }
-      ).catch(() => {});
-      return;
-    }
-
-    const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
-    let numDisplay = '••••••••••';
-    if (cleanNum.length > 7) {
-      numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
-    } else if (cleanNum) {
-      numDisplay = `+${cleanNum.substring(0, 3)}****`;
-    }
-
-    await ctx.telegram.editMessageText(
-      chatId, statusMsgId, null,
-      `🚀 *Bot Main Menu*\n\n` +
-      `🎉 *WhatsApp Account Connected & Active!*\n\n` +
-      `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
-      `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
-      `⚡ *WhatsApp Checking Engine:* Ready!\n` +
-      `Tap \`/check\` from the menu to start checking numbers!`,
-      {
-        parse_mode: 'Markdown',
-        ...getMainMenuKeyboard(true, false)
-      }
-    ).catch(() => {});
+    await ctx.answerCbQuery('🧹 Clearing chat history...').catch(() => {});
+    return executeChatCleaner(ctx);
   });
 
   // Cancel action — In-place transition back to Main Menu (Prevents Telegram 'START' button popup)
