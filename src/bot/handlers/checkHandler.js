@@ -122,12 +122,20 @@ async function handleSingleNumberInput(ctx) {
   if (!cleanNum) {
     return ctx.reply(
       `❌ *Invalid Phone Number*\n\nPlease enter a valid number with country code (e.g. \`8801700000000\`).`,
-      { reply_to_message_id: ctx.message.message_id, parse_mode: 'Markdown' }
+      { parse_mode: 'Markdown' }
     );
   }
 
+  // Auto-delete user's input message and prompt card for a 100% clean chat
+  if (ctx.message?.message_id) {
+    ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => {});
+  }
+  if (ctx.session.checkPromptMsgId) {
+    ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.checkPromptMsgId).catch(() => {});
+    ctx.session.checkPromptMsgId = null;
+  }
+
   const checkingMsg = await ctx.reply(`⌛ *Checking WhatsApp status for \`+${cleanNum}\`...*`, {
-    reply_to_message_id: ctx.message.message_id,
     parse_mode: 'Markdown'
   });
 
@@ -207,8 +215,17 @@ async function handleBulkCheckInput(ctx) {
   if (numbers.length === 0) {
     return ctx.reply(
       `❌ *No Valid Phone Numbers Found*\n\nPlease ensure your message or file contains valid international phone numbers.`,
-      { reply_to_message_id: ctx.message.message_id, parse_mode: 'Markdown' }
+      { parse_mode: 'Markdown' }
     );
+  }
+
+  // Auto-delete user's typed input message and prompt card for a 100% clean chat
+  if (ctx.message?.message_id) {
+    ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => {});
+  }
+  if (ctx.session.checkPromptMsgId) {
+    ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.checkPromptMsgId).catch(() => {});
+    ctx.session.checkPromptMsgId = null;
   }
 
   const progressMsg = await ctx.reply(
@@ -217,7 +234,7 @@ async function handleBulkCheckInput(ctx) {
     `Progress: \`[░░░░░░░░░░] 0%\` (0/${numbers.length})\n` +
     `🔴 Registered (Red Tag): 0\n` +
     `🟢 Unregistered (Green Tag): 0`,
-    { reply_to_message_id: ctx.message.message_id, parse_mode: 'Markdown' }
+    { parse_mode: 'Markdown' }
   );
 
   let lastUpdateTime = 0;
@@ -263,7 +280,6 @@ async function handleBulkCheckInput(ctx) {
       `📥 *Download report files below:*`;
 
     await ctx.reply(summaryMsg, {
-      reply_to_message_id: ctx.message.message_id,
       parse_mode: 'Markdown',
       ...getReportKeyboard()
     });
