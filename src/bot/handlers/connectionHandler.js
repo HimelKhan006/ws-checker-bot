@@ -142,13 +142,6 @@ function registerConnectionHandlers(bot) {
           },
 
           onConnected: async ({ userJid, pushName }) => {
-            // Delete all temp messages (QR photos etc.)
-            if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
-              const ids = [...ctx.session.tempMsgIds];
-              ctx.session.tempMsgIds = [];
-              Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
-            }
-
             const cleanNum = userJid ? userJid.split('@')[0].replace(/\D/g, '') : '';
             let numDisplay = '••••••••••';
             if (cleanNum.length > 7) {
@@ -157,17 +150,56 @@ function registerConnectionHandlers(bot) {
               numDisplay = `+${cleanNum.substring(0, 3)}****`;
             }
 
-            await ctx.reply(
+            // Step 1: Send initial connection animation card
+            const animMsg = await ctx.reply(
+              `🔄 *Connecting WhatsApp Account...*\n\n` +
+              `⏳ *Status:* Handshaking with WhatsApp servers...\n` +
+              `\`[▓▓▓▓░░░░░░] 40%\`\n\n` +
+              `_Establishing secure session..._`,
+              { parse_mode: 'Markdown' }
+            ).catch(() => null);
+
+            // Step 2: Delete temp messages (QR photos)
+            if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
+              const ids = [...ctx.session.tempMsgIds];
+              ctx.session.tempMsgIds = [];
+              Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
+            }
+
+            // Step 3: Progress animation to 85%
+            await new Promise(r => setTimeout(r, 250));
+            if (animMsg?.message_id) {
+              await ctx.telegram.editMessageText(
+                ctx.chat.id, animMsg.message_id, null,
+                `🔄 *Connecting WhatsApp Account...*\n\n` +
+                `⚡ *Status:* Syncing profile & credentials...\n` +
+                `\`[▓▓▓▓▓▓▓▓░░] 85%\`\n\n` +
+                `_Verifying account details..._`,
+                { parse_mode: 'Markdown' }
+              ).catch(() => {});
+            }
+
+            await new Promise(r => setTimeout(r, 300));
+
+            // Step 4: Final Connected Confirmation Card!
+            const finalCardText =
               `🎉 *WhatsApp Account Connected Successfully!*\n\n` +
               `👤 *Account Name:* \`${pushName}\`\n` +
               `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
               `⚡ *Engine Status:* Active & Ready!\n` +
-              `Tap \`/check\` from the menu to start checking numbers!`,
-              {
-                parse_mode: 'Markdown',
-                ...getMainMenuKeyboard(true, false)
-              }
-            );
+              `Tap \`/check\` from the menu to start checking numbers!`;
+
+            if (animMsg?.message_id) {
+              await ctx.telegram.editMessageText(
+                ctx.chat.id, animMsg.message_id, null,
+                finalCardText,
+                { parse_mode: 'Markdown', ...getMainMenuKeyboard(true, false) }
+              ).catch(async () => {
+                await ctx.reply(finalCardText, { parse_mode: 'Markdown', ...getMainMenuKeyboard(true, false) });
+              });
+            } else {
+              await ctx.reply(finalCardText, { parse_mode: 'Markdown', ...getMainMenuKeyboard(true, false) });
+            }
           },
 
           onDisconnected: async (reason) => {
@@ -463,13 +495,6 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
         onConnected: async ({ userJid, pushName }) => {
           if (ctx.session.pairingTimer) clearInterval(ctx.session.pairingTimer);
 
-          // Parallel delete all temp messages
-          if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
-            const ids = [...ctx.session.tempMsgIds];
-            ctx.session.tempMsgIds = [];
-            Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
-          }
-
           const cleanNum = userJid ? userJid.split('@')[0].replace(/\D/g, '') : '';
           let numDisplay = '••••••••••';
           if (cleanNum.length > 7) {
@@ -478,17 +503,56 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
             numDisplay = `+${cleanNum.substring(0, 3)}****`;
           }
 
-          await ctx.reply(
+          // Step 1: Send initial connection animation card
+          const animMsg = await ctx.reply(
+            `🔄 *Connecting WhatsApp Account...*\n\n` +
+            `⏳ *Status:* Handshaking with WhatsApp servers...\n` +
+            `\`[▓▓▓▓░░░░░░] 40%\`\n\n` +
+            `_Establishing secure session..._`,
+            { parse_mode: 'Markdown' }
+          ).catch(() => null);
+
+          // Step 2: Delete temp messages (pairing code cards etc.)
+          if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
+            const ids = [...ctx.session.tempMsgIds];
+            ctx.session.tempMsgIds = [];
+            Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
+          }
+
+          // Step 3: Progress animation to 85%
+          await new Promise(r => setTimeout(r, 250));
+          if (animMsg?.message_id) {
+            await ctx.telegram.editMessageText(
+              ctx.chat.id, animMsg.message_id, null,
+              `🔄 *Connecting WhatsApp Account...*\n\n` +
+              `⚡ *Status:* Syncing profile & credentials...\n` +
+              `\`[▓▓▓▓▓▓▓▓░░] 85%\`\n\n` +
+              `_Verifying account details..._`,
+              { parse_mode: 'Markdown' }
+            ).catch(() => {});
+          }
+
+          await new Promise(r => setTimeout(r, 300));
+
+          // Step 4: Final Connected Confirmation Card!
+          const finalCardText =
             `🎉 *WhatsApp Account Connected Successfully!*\n\n` +
             `👤 *Account Name:* \`${pushName}\`\n` +
             `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
             `⚡ *Engine Status:* Active & Ready!\n` +
-            `Tap \`/check\` from the menu to start checking numbers!`,
-            {
-              parse_mode: 'Markdown',
-              ...getMainMenuKeyboard(true, false)
-            }
-          );
+            `Tap \`/check\` from the menu to start checking numbers!`;
+
+          if (animMsg?.message_id) {
+            await ctx.telegram.editMessageText(
+              ctx.chat.id, animMsg.message_id, null,
+              finalCardText,
+              { parse_mode: 'Markdown', ...getMainMenuKeyboard(true, false) }
+            ).catch(async () => {
+              await ctx.reply(finalCardText, { parse_mode: 'Markdown', ...getMainMenuKeyboard(true, false) });
+            });
+          } else {
+            await ctx.reply(finalCardText, { parse_mode: 'Markdown', ...getMainMenuKeyboard(true, false) });
+          }
         },
 
         // ── Disconnected (only fires if was previously connected) ──────────
