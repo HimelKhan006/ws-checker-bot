@@ -387,12 +387,15 @@ function createBot(token) {
     if (!isConnected) {
       await ctx.telegram.editMessageText(
         chatId, statusMsgId, null,
-        `✨ *Chat Cleared!*\n\n⚠️ *WhatsApp Account Not Connected*\nPlease connect to start checking.\n\nTap the button below:`,
+        `🚀 *Bot Main Menu*\n\n` +
+        `⚠️ *WhatsApp Account Not Connected*\n` +
+        `Please connect your WhatsApp account to start checking.\n\n` +
+        `Tap the button below to connect your WhatsApp account:`,
         {
           parse_mode: 'Markdown',
           ...Markup.inlineKeyboard([[Markup.button.callback('🔗 Connect WhatsApp Account', 'MENU_CONNECT')]])
         }
-      ).catch(() => ctx.reply('✨ Chat cleared! Type /menu for main menu.'));
+      ).catch(() => {});
       return;
     }
 
@@ -406,7 +409,7 @@ function createBot(token) {
 
     await ctx.telegram.editMessageText(
       chatId, statusMsgId, null,
-      `✨ *Chat Cleared! Fresh Start.*\n\n` +
+      `🚀 *Bot Main Menu*\n\n` +
       `🎉 *WhatsApp Account Connected & Active!*\n\n` +
       `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
       `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
@@ -416,7 +419,7 @@ function createBot(token) {
         parse_mode: 'Markdown',
         ...getMainMenuKeyboard(true, false)
       }
-    ).catch(() => ctx.reply('✨ Chat cleared! Type /menu for main menu.'));
+    ).catch(() => {});
   });
 
   // /guide command
