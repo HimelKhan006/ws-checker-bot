@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: ws-checker-kkh-bot
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_IDS
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GIST_ID
+        sync: false

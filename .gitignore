@@ -1,0 +1,15 @@
+# Environment, Credentials & Private Data (NEVER COMMIT)
+.env
+whatsapp_sessions/
+temp/
+data/*.json
+data/
+
+# Dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# System files
+.DS_Store
+Thumbs.db
