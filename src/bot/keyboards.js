@@ -9,8 +9,8 @@ function getRemoveKeyboard() {
 
 /**
  * Main Menu Inline Keyboard
- * - Logout button REMOVED (only on profile)
- * - Clear Chat button added
+ * - Logout button only on Profile
+ * - Clear Chat button at bottom
  */
 function getMainMenuKeyboard(isConnected, isRevealed = false) {
   const keyboard = [];
@@ -40,7 +40,7 @@ function getMainMenuKeyboard(isConnected, isRevealed = false) {
 }
 
 /**
- * Profile Card Keyboard (Includes Reveal/Hide, Leaderboard, Logout, Clear Chat)
+ * Profile Card Keyboard — Logout ONLY here, NO Clear Chat
  */
 function getProfileKeyboard(isConnected, isRevealed = false) {
   const keyboard = [];
@@ -66,10 +66,6 @@ function getProfileKeyboard(isConnected, isRevealed = false) {
       Markup.button.callback('🚪 Logout WhatsApp Account', 'MENU_LOGOUT')
     ]);
   }
-
-  keyboard.push([
-    Markup.button.callback('🧹 Clear Chat', 'CLEAR_CHAT')
-  ]);
 
   return Markup.inlineKeyboard(keyboard);
 }

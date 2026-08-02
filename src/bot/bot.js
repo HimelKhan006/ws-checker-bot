@@ -667,30 +667,46 @@ function createBot(token) {
     return sendMainMenu(ctx, '🏠 *Main Menu*');
   });
 
-  // 🧹 Clear Chat — deletes all tracked messages and sends a fresh start prompt
+  // 🧹 Clear Chat — bulk-wipes ALL recent bot messages by deleting a range of message IDs
   bot.action('CLEAR_CHAT', async (ctx) => {
-    await ctx.answerCbQuery('🧹 Clearing chat...').catch(() => {});
-    const userId = ctx.from.id;
+    await ctx.answerCbQuery('🧹 Clearing all messages...').catch(() => {});
+    const chatId = ctx.chat.id;
 
     // Stop any active timers
     if (ctx.session.pairingTimer) { clearInterval(ctx.session.pairingTimer); ctx.session.pairingTimer = null; }
     if (ctx.session.qrTimer) { clearTimeout(ctx.session.qrTimer); ctx.session.qrTimer = null; }
     ctx.session.state = null;
+    ctx.session.pairingPromptMsgId = null;
 
-    // Delete triggered message
-    const clickedMsgId = ctx.callbackQuery?.message?.message_id;
-    const chatId = ctx.chat.id;
-    if (clickedMsgId) ctx.telegram.deleteMessage(chatId, clickedMsgId).catch(() => {});
+    // Get the current message ID as the highest known ID in this chat
+    const currentMsgId = ctx.callbackQuery?.message?.message_id || 0;
 
-    // Delete all tracked temp messages
+    // Build list of ALL message IDs to delete:
+    // 1. All tracked session temp messages
+    const idsToDelete = new Set();
+
     if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
-      const ids = [...ctx.session.tempMsgIds];
+      ctx.session.tempMsgIds.forEach(id => idsToDelete.add(id));
       ctx.session.tempMsgIds = [];
-      Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(chatId, mId))).catch(() => {});
     }
 
-    // Small delay then send a fresh clean start message
-    await new Promise(r => setTimeout(r, 400));
+    // 2. Sweep a wide range backwards from currentMsgId (covers entire bot conversation history)
+    //    Telegram message IDs are sequential — this catches every message the bot sent
+    const sweepRange = 500; // covers ~500 messages back in the chat
+    for (let id = currentMsgId; id >= Math.max(1, currentMsgId - sweepRange); id--) {
+      idsToDelete.add(id);
+    }
+
+    // Fire all deletions in parallel batches (Telegram rate limit: ~30 req/s)
+    const ids = [...idsToDelete];
+    const batchSize = 25;
+    for (let i = 0; i < ids.length; i += batchSize) {
+      const batch = ids.slice(i, i + batchSize);
+      await Promise.allSettled(batch.map(mId => ctx.telegram.deleteMessage(chatId, mId)));
+      if (i + batchSize < ids.length) await new Promise(r => setTimeout(r, 100));
+    }
+
+    // Send a completely fresh start message
     return sendMainMenu(ctx, '✨ *Chat Cleared! Fresh Start.*');
   });
 
