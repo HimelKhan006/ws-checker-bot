@@ -52,10 +52,6 @@ function getProfileKeyboard(isConnected, isRevealed = false) {
     }
   }
 
-  keyboard.push([
-    Markup.button.callback('🏆 View Referral Leaderboard', 'VIEW_LEADERBOARD')
-  ]);
-
   if (isConnected) {
     keyboard.push([
       Markup.button.callback('🚪 Logout WhatsApp Account', 'MENU_LOGOUT')
