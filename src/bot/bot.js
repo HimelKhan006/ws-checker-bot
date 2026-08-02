@@ -358,37 +358,114 @@ function createBot(token) {
     return sendMainMenu(ctx, '🏠 *Main Menu*');
   });
 
-  // /clear command — LIGHTNING FAST & INSTANT chat history wipe
+  // /clear command — Professional Animated Chat Cleaner
   bot.command('clear', async (ctx) => {
     const chatId = ctx.chat.id;
     const cmdMsgId = ctx.message?.message_id || 0;
 
-    // Reset active session state & timers instantly
+    // Instantly delete the /clear command message
+    if (cmdMsgId) ctx.telegram.deleteMessage(chatId, cmdMsgId).catch(() => {});
+
+    // Reset active session state & timers
     if (ctx.session.pairingTimer) { clearInterval(ctx.session.pairingTimer); ctx.session.pairingTimer = null; }
     if (ctx.session.qrTimer) { clearTimeout(ctx.session.qrTimer); ctx.session.qrTimer = null; }
     ctx.session.state = null;
     ctx.session.pairingPromptMsgId = null;
 
-    // Build list of message IDs to delete
-    const idsToDelete = new Set();
-    if (cmdMsgId) idsToDelete.add(cmdMsgId);
+    // Step 1: Send initial Animated Cleaner card (10%)
+    const cleanerMsg = await ctx.reply(
+      `🧹 *Professional Chat Cleaner*\n\n` +
+      `⏳ *Status:* Initializing chat sweep...\n` +
+      `\`[▓░░░░░░░░░] 10%\`\n\n` +
+      `_Scanning & purging temporary logs and message history..._`,
+      { parse_mode: 'Markdown' }
+    ).catch(() => null);
 
+    const statusMsgId = cleanerMsg?.message_id || 0;
+
+    // Step 2: Build set of message IDs to delete
+    const idsToDelete = new Set();
     if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
       ctx.session.tempMsgIds.forEach(id => idsToDelete.add(id));
       ctx.session.tempMsgIds = [];
     }
 
-    // Fast 100-message sweep backwards from /clear command
-    for (let id = cmdMsgId - 1; id >= Math.max(1, cmdMsgId - 100); id--) {
-      idsToDelete.add(id);
+    for (let id = cmdMsgId - 1; id >= Math.max(1, cmdMsgId - 150); id--) {
+      if (id !== statusMsgId) idsToDelete.add(id);
     }
 
-    // Fire non-blocking background deletion sweep (INSTANT, no wait!)
-    const ids = [...idsToDelete];
-    Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(chatId, mId))).catch(() => {});
+    // Step 3: Animate progress bar to 55%
+    await new Promise(r => setTimeout(r, 200));
+    if (statusMsgId) {
+      await ctx.telegram.editMessageText(
+        chatId, statusMsgId, null,
+        `🧹 *Professional Chat Cleaner*\n\n` +
+        `✨ *Status:* Purging message history...\n` +
+        `\`[▓▓▓▓▓░░░░░] 55%\`\n\n` +
+        `_Clearing conversation cache & temporary cards..._`,
+        { parse_mode: 'Markdown' }
+      ).catch(() => {});
+    }
 
-    // INSTANTLY send fresh Main Menu card without waiting for deletions to finish!
-    return sendMainMenu(ctx, '🚀 *Bot Main Menu*');
+    // Step 4: Execute parallel deletion sweep
+    const ids = [...idsToDelete];
+    await Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(chatId, mId)));
+
+    // Step 5: Animate progress bar to 100%
+    if (statusMsgId) {
+      await ctx.telegram.editMessageText(
+        chatId, statusMsgId, null,
+        `🧹 *Professional Chat Cleaner*\n\n` +
+        `✅ *Status:* Chat 100% Cleaned & Purged!\n` +
+        `\`[▓▓▓▓▓▓▓▓▓▓] 100%\`\n\n` +
+        `_Starting fresh session..._`,
+        { parse_mode: 'Markdown' }
+      ).catch(() => {});
+    }
+
+    await new Promise(r => setTimeout(r, 350));
+
+    // Step 6: Edit animated card in-place into Main Menu card!
+    const userId = ctx.from.id;
+    const isConnected = sessionManager.isConnected(userId);
+    const session = sessionManager.getSession(userId);
+
+    if (!isConnected) {
+      await ctx.telegram.editMessageText(
+        chatId, statusMsgId, null,
+        `🚀 *Bot Main Menu*\n\n` +
+        `⚠️ *WhatsApp Account Not Connected*\n` +
+        `Please connect your WhatsApp account to start checking.\n\n` +
+        `Tap the button below to connect your WhatsApp account:`,
+        {
+          parse_mode: 'Markdown',
+          ...Markup.inlineKeyboard([[Markup.button.callback('🔗 Connect WhatsApp Account', 'MENU_CONNECT')]])
+        }
+      ).catch(() => {});
+      return;
+    }
+
+    const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
+    let numDisplay = '••••••••••';
+    if (cleanNum.length > 7) {
+      numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
+    } else if (cleanNum) {
+      numDisplay = `+${cleanNum.substring(0, 3)}****`;
+    }
+
+    await ctx.telegram.editMessageText(
+      chatId, statusMsgId, null,
+      `🚀 *Bot Main Menu*\n\n` +
+      `🎉 *WhatsApp Account Connected & Active!*\n\n` +
+      `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
+      `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
+      `⚡ *WhatsApp Checking Engine:* Ready!\n` +
+      `Tap \`/check\` from the menu to start checking numbers!`,
+      {
+        parse_mode: 'Markdown',
+        ...getMainMenuKeyboard(true, false)
+      }
+    ).catch(() => {});
   });
 
   // /guide command
