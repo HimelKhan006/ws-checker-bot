@@ -110,26 +110,49 @@ function registerConnectionHandlers(bot) {
           onQr: async (qrBuffer) => {
             try {
               qrCount++;
-              // Delete old QR photo in-place
-              if (initMsgId && qrCount === 1) {
-                ctx.telegram.deleteMessage(ctx.chat.id, initMsgId).catch(() => {});
-              }
+              const captionText =
+                `📷 *Scan this QR Code in WhatsApp*\n\n` +
+                `${qrCount > 1 ? `🔄 *Auto-refreshed (attempt #${qrCount})*\n\n` : ''}` +
+                `⏱️ *This QR expires in 60 seconds*\n\n` +
+                `*How to scan:*\n` +
+                `1. Open WhatsApp on your phone.\n` +
+                `2. Tap *Settings* ⚙️ ➔ *Linked Devices*.\n` +
+                `3. Tap *Link a Device* and scan this code.\n\n` +
+                `_Code auto-refreshes if expired._`;
+
               if (photoMessageId) {
-                ctx.telegram.deleteMessage(ctx.chat.id, photoMessageId).catch(() => {});
+                // Edit existing QR photo message in-place on the SAME message!
+                try {
+                  await ctx.telegram.editMessageMedia(
+                    ctx.chat.id,
+                    photoMessageId,
+                    null,
+                    {
+                      type: 'photo',
+                      media: { source: qrBuffer },
+                      caption: captionText,
+                      parse_mode: 'Markdown'
+                    },
+                    {
+                      ...getCancelKeyboard()
+                    }
+                  );
+                  return;
+                } catch (e) {
+                  // Fallback to resend if editMessageMedia unsupported by client
+                  ctx.telegram.deleteMessage(ctx.chat.id, photoMessageId).catch(() => {});
+                }
+              }
+
+              // Initial QR photo creation
+              if (initMsgId) {
+                ctx.telegram.deleteMessage(ctx.chat.id, initMsgId).catch(() => {});
               }
 
               const sentPhoto = await ctx.replyWithPhoto(
                 { source: qrBuffer },
                 {
-                  caption:
-                    `📷 *Scan this QR Code in WhatsApp*\n\n` +
-                    `${qrCount > 1 ? `🔄 *Auto-refreshed (attempt #${qrCount})*\n\n` : ''}` +
-                    `⏱️ *This QR expires in 60 seconds*\n\n` +
-                    `*How to scan:*\n` +
-                    `1. Open WhatsApp on your phone.\n` +
-                    `2. Tap *Settings* ⚙️ ➔ *Linked Devices*.\n` +
-                    `3. Tap *Link a Device* and scan this code.\n\n` +
-                    `_Code auto-refreshes if expired._`,
+                  caption: captionText,
                   parse_mode: 'Markdown',
                   ...getCancelKeyboard()
                 }
@@ -137,7 +160,7 @@ function registerConnectionHandlers(bot) {
               photoMessageId = sentPhoto.message_id;
               if (photoMessageId) ctx.session.tempMsgIds.push(photoMessageId);
             } catch (err) {
-              console.error('[QR] Failed to send QR photo:', err.message);
+              console.error('[QR] Failed to render QR photo:', err.message);
             }
           },
 
