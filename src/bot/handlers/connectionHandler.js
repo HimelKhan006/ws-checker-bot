@@ -150,69 +150,27 @@ function registerConnectionHandlers(bot) {
               numDisplay = `+${cleanNum.substring(0, 3)}****`;
             }
 
-            // Step 1: Send initial connection animation card (40%)
-            const animMsg = await ctx.reply(
-              `🔄 *Connecting WhatsApp Account...*\n\n` +
-              `⏳ *Status:* Handshaking with WhatsApp servers...\n` +
-              `\`[▓▓▓▓░░░░░░] 40%\`\n\n` +
-              `_Establishing secure session..._`,
-              { parse_mode: 'Markdown' }
-            ).catch(() => null);
-
-            // Step 2: Delete temp messages (QR photos)
+            // Fast non-blocking background cleanup of QR photo temp messages
             if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
               const ids = [...ctx.session.tempMsgIds];
               ctx.session.tempMsgIds = [];
               Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
             }
 
-            // Step 3: Progress animation to 80%
-            await new Promise(r => setTimeout(r, 200));
-            if (animMsg?.message_id) {
-              await ctx.telegram.editMessageText(
-                ctx.chat.id, animMsg.message_id, null,
-                `🔄 *Connecting WhatsApp Account...*\n\n` +
-                `⚡ *Status:* Syncing profile & credentials...\n` +
-                `\`[▓▓▓▓▓▓▓▓░░] 80%\`\n\n` +
-                `_Verifying account details..._`,
-                { parse_mode: 'Markdown' }
-              ).catch(() => {});
-            }
-
-            // Step 4: Progress animation to 100% COMPLETE!
-            await new Promise(r => setTimeout(r, 250));
-            if (animMsg?.message_id) {
-              await ctx.telegram.editMessageText(
-                ctx.chat.id, animMsg.message_id, null,
-                `🔄 *Connecting WhatsApp Account...*\n\n` +
-                `✅ *Status:* Connection 100% Complete!\n` +
-                `\`[▓▓▓▓▓▓▓▓▓▓] 100%\`\n\n` +
-                `_Loading connected profile..._`,
-                { parse_mode: 'Markdown' }
-              ).catch(() => {});
-            }
-
-            await new Promise(r => setTimeout(r, 300));
-
-            // Step 5: Final Connected Confirmation Profile Card!
-            const finalCardText =
+            // INSTANT Connection Confirmation Card with 100% Status!
+            await ctx.reply(
               `🎉 *WhatsApp Account Connected Successfully!*\n\n` +
-              `👤 *Account Name:* \`${pushName}\`\n` +
+              `✅ *Status:* Connection 100% Verified & Active!\n` +
+              `\`[▓▓▓▓▓▓▓▓▓▓] 100%\`\n\n` +
+              `👤 *Account Name:* \`${pushName || 'WhatsApp Account'}\`\n` +
               `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
-              `⚡ *Engine Status:* Active & Ready!\n` +
-              `Tap \`/check\` from the menu to start checking numbers!`;
-
-            if (animMsg?.message_id) {
-              await ctx.telegram.editMessageText(
-                ctx.chat.id, animMsg.message_id, null,
-                finalCardText,
-                { parse_mode: 'Markdown', ...getMainMenuKeyboard(true, false) }
-              ).catch(async () => {
-                await ctx.reply(finalCardText, { parse_mode: 'Markdown', ...getMainMenuKeyboard(true, false) });
-              });
-            } else {
-              await ctx.reply(finalCardText, { parse_mode: 'Markdown', ...getMainMenuKeyboard(true, false) });
-            }
+              `⚡ *Engine Status:* Active & Ready to Check!\n` +
+              `Tap \`/check\` from the menu to start checking numbers!`,
+              {
+                parse_mode: 'Markdown',
+                ...getMainMenuKeyboard(true, false)
+              }
+            ).catch(() => {});
           },
 
           onDisconnected: async (reason) => {
@@ -516,69 +474,27 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
             numDisplay = `+${cleanNum.substring(0, 3)}****`;
           }
 
-          // Step 1: Send initial connection animation card (40%)
-          const animMsg = await ctx.reply(
-            `🔄 *Connecting WhatsApp Account...*\n\n` +
-            `⏳ *Status:* Handshaking with WhatsApp servers...\n` +
-            `\`[▓▓▓▓░░░░░░] 40%\`\n\n` +
-            `_Establishing secure session..._`,
-            { parse_mode: 'Markdown' }
-          ).catch(() => null);
-
-          // Step 2: Delete temp messages (pairing code cards etc.)
+          // Fast non-blocking background cleanup of temp messages (pairing code cards)
           if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
             const ids = [...ctx.session.tempMsgIds];
             ctx.session.tempMsgIds = [];
             Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
           }
 
-          // Step 3: Progress animation to 80%
-          await new Promise(r => setTimeout(r, 200));
-          if (animMsg?.message_id) {
-            await ctx.telegram.editMessageText(
-              ctx.chat.id, animMsg.message_id, null,
-              `🔄 *Connecting WhatsApp Account...*\n\n` +
-              `⚡ *Status:* Syncing profile & credentials...\n` +
-              `\`[▓▓▓▓▓▓▓▓░░] 80%\`\n\n` +
-              `_Verifying account details..._`,
-              { parse_mode: 'Markdown' }
-            ).catch(() => {});
-          }
-
-          // Step 4: Progress animation to 100% COMPLETE!
-          await new Promise(r => setTimeout(r, 250));
-          if (animMsg?.message_id) {
-            await ctx.telegram.editMessageText(
-              ctx.chat.id, animMsg.message_id, null,
-              `🔄 *Connecting WhatsApp Account...*\n\n` +
-              `✅ *Status:* Connection 100% Complete!\n` +
-              `\`[▓▓▓▓▓▓▓▓▓▓] 100%\`\n\n` +
-              `_Loading connected profile..._`,
-              { parse_mode: 'Markdown' }
-            ).catch(() => {});
-          }
-
-          await new Promise(r => setTimeout(r, 300));
-
-          // Step 5: Final Connected Confirmation Profile Card!
-          const finalCardText =
+          // INSTANT Connection Confirmation Card with 100% Status!
+          await ctx.reply(
             `🎉 *WhatsApp Account Connected Successfully!*\n\n` +
-            `👤 *Account Name:* \`${pushName}\`\n` +
+            `✅ *Status:* Connection 100% Verified & Active!\n` +
+            `\`[▓▓▓▓▓▓▓▓▓▓] 100%\`\n\n` +
+            `👤 *Account Name:* \`${pushName || 'WhatsApp Account'}\`\n` +
             `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
-            `⚡ *Engine Status:* Active & Ready!\n` +
-            `Tap \`/check\` from the menu to start checking numbers!`;
-
-          if (animMsg?.message_id) {
-            await ctx.telegram.editMessageText(
-              ctx.chat.id, animMsg.message_id, null,
-              finalCardText,
-              { parse_mode: 'Markdown', ...getMainMenuKeyboard(true, false) }
-            ).catch(async () => {
-              await ctx.reply(finalCardText, { parse_mode: 'Markdown', ...getMainMenuKeyboard(true, false) });
-            });
-          } else {
-            await ctx.reply(finalCardText, { parse_mode: 'Markdown', ...getMainMenuKeyboard(true, false) });
-          }
+            `⚡ *Engine Status:* Active & Ready to Check!\n` +
+            `Tap \`/check\` from the menu to start checking numbers!`,
+            {
+              parse_mode: 'Markdown',
+              ...getMainMenuKeyboard(true, false)
+            }
+          ).catch(() => {});
         },
 
         // ── Disconnected (only fires if was previously connected) ──────────
