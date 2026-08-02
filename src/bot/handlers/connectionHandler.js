@@ -132,13 +132,12 @@ function registerConnectionHandlers(bot) {
             }
           },
           onConnected: async ({ userJid, pushName }) => {
-            // Delete ALL temporary pairing messages & cards on successful connection!
+            // Non-blocking background deletion of temporary pairing messages for instant speed!
             if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
-              for (const msgId of ctx.session.tempMsgIds) {
-                ctx.telegram.deleteMessage(ctx.chat.id, msgId).catch(() => {});
-              }
+              const ids = [...ctx.session.tempMsgIds];
+              ctx.session.tempMsgIds = [];
+              Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
             }
-            ctx.session.tempMsgIds = [];
 
             const cleanNum = userJid ? userJid.split('@')[0].replace(/\D/g, '') : '';
             const hiddenNumText = cleanNum
@@ -393,13 +392,12 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
         onConnected: async ({ userJid, pushName }) => {
           if (ctx.session.pairingTimer) clearInterval(ctx.session.pairingTimer);
 
-          // Automatically delete ALL temporary connection/pairing messages on successful connection!
+          // Non-blocking background deletion of temporary pairing messages for instant speed!
           if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
-            for (const msgId of ctx.session.tempMsgIds) {
-              ctx.telegram.deleteMessage(ctx.chat.id, msgId).catch(() => {});
-            }
+            const ids = [...ctx.session.tempMsgIds];
+            ctx.session.tempMsgIds = [];
+            Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
           }
-          ctx.session.tempMsgIds = [];
 
           const cleanNum = userJid ? userJid.split('@')[0].replace(/\D/g, '') : '';
           const hiddenNumText = cleanNum

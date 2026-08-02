@@ -194,14 +194,11 @@ class SessionManager {
       setTimeout(async () => {
         const cleanNumber = phoneNumber.replace(/\D/g, '');
 
-        // Wait for socket to be ready before calling requestPairingCode
-        for (let i = 0; i < 20; i++) {
+        // Instant check: wait briefly for socket to open if connecting
+        for (let i = 0; i < 15; i++) {
           if (sessionData.isSocketReady || sock.ws?.isOpen) break;
-          await delay(300);
+          await delay(100);
         }
-
-        // 1.5 second safety delay to ensure handshake is fully processed
-        await delay(1500);
 
         let attempts = 0;
         while (attempts < 5) {
@@ -218,14 +215,13 @@ class SessionManager {
             }
           } catch (err) {
             console.error(`Pairing code error (attempt ${attempts}):`, err.message);
+            await delay(500);
             if (attempts >= 5) {
               if (callbacks.onError) callbacks.onError(err.message);
-            } else {
-              await delay(2000);
             }
           }
         }
-      }, 1000);
+      }, 100);
     }
 
     return sessionData;
