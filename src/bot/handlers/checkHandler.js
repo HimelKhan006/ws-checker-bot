@@ -126,14 +126,16 @@ async function handleSingleNumberInput(ctx) {
     );
   }
 
-  // Auto-delete user's input message and prompt card for a 100% clean chat
+  // Auto-delete user's input message and prompt card FIRST for a 100% clean chat
+  const deleteProms = [];
   if (ctx.message?.message_id) {
-    ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => {});
+    deleteProms.push(ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => {}));
   }
   if (ctx.session.checkPromptMsgId) {
-    ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.checkPromptMsgId).catch(() => {});
+    deleteProms.push(ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.checkPromptMsgId).catch(() => {}));
     ctx.session.checkPromptMsgId = null;
   }
+  await Promise.allSettled(deleteProms);
 
   const checkingMsg = await ctx.reply(`⌛ *Checking WhatsApp status for \`+${cleanNum}\`...*`, {
     parse_mode: 'Markdown'
@@ -219,14 +221,16 @@ async function handleBulkCheckInput(ctx) {
     );
   }
 
-  // Auto-delete user's typed input message and prompt card for a 100% clean chat
+  // Auto-delete user's typed input message and prompt card FIRST for a 100% clean chat
+  const deleteProms = [];
   if (ctx.message?.message_id) {
-    ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => {});
+    deleteProms.push(ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => {}));
   }
   if (ctx.session.checkPromptMsgId) {
-    ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.checkPromptMsgId).catch(() => {});
+    deleteProms.push(ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.checkPromptMsgId).catch(() => {}));
     ctx.session.checkPromptMsgId = null;
   }
+  await Promise.allSettled(deleteProms);
 
   const progressMsg = await ctx.reply(
     `⚡ *Processing WhatsApp Registration Check...*\n\n` +
