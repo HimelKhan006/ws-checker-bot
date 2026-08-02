@@ -12,14 +12,14 @@ const {
 
 class SessionManager {
   constructor() {
-    this.sessions = new Map(); // userId -> { sock, state, userJid, pushName, method, pairingCode, isSocketReady, callbacks }
+    this.sessions = new Map(); // userId -> { sock, state, userJid, pushName, method, pairingCode, isSocketReady, callbacks, hasNotifiedConnected, reconnectAttempts }
     this.sessionDir = path.join(__dirname, '..', '..', 'whatsapp_sessions');
     this.ensureSessionDir();
     this.startKeepAlivePingLoop();
   }
 
+  // ─── 24/7 Keep-Alive Ping (prevents 4-day session logouts) ──────────────────
   startKeepAlivePingLoop() {
-    // Periodically ping WhatsApp servers every 3 minutes to prevent 4-day session logouts
     setInterval(() => {
       this.sessions.forEach((session) => {
         if (session && session.sock && session.state === 'CONNECTED') {
@@ -28,7 +28,7 @@ class SessionManager {
           } catch (e) {}
         }
       });
-    }, 180000); // 3 minutes
+    }, 120000); // every 2 minutes (more aggressive than 3min to stay safe)
   }
 
   ensureSessionDir() {
@@ -55,44 +55,59 @@ class SessionManager {
     return !!(session && session.sock && session.state === 'CONNECTED');
   }
 
-  /**
-   * Start connecting a WhatsApp session for a Telegram user
-   */
-  async createSession(userId, options = {}) {
-    const uid = String(userId);
-    const { method = 'PAIRING', phoneNumber = null, callbacks = {}, isNewPairing = false } = options;
-
-    // End old socket cleanly if active
-    if (this.sessions.has(uid)) {
-      const oldSession = this.sessions.get(uid);
-      if (oldSession) {
-        oldSession.callbacks = {}; // Suppress unwanted disconnect notifications during session reset
-        if (oldSession.sock) {
-          try {
-            oldSession.sock.ev.removeAllListeners('connection.update');
-            oldSession.sock.ev.removeAllListeners('creds.update');
-            oldSession.sock.end();
-          } catch (e) {}
-        }
-      }
-      this.sessions.delete(uid);
-    }
-
-    // Wipe old session files ONLY if starting a NEW explicit pairing
-    if (isNewPairing) {
-      const userPath = this.getUserSessionPath(userId);
-      if (fs.existsSync(userPath)) {
+  // ─── Cleanly terminate & optionally wipe a session ──────────────────────────
+  async _terminateSession(uid, wipe = false) {
+    const session = this.sessions.get(uid);
+    if (session) {
+      session.callbacks = {}; // silence all events immediately
+      if (session.reconnectTimer) clearTimeout(session.reconnectTimer);
+      if (session.sock) {
         try {
-          fs.rmSync(userPath, { recursive: true, force: true });
+          session.sock.ev.removeAllListeners();
+          try { session.sock.end(); } catch (e) {}
         } catch (e) {}
       }
     }
+    this.sessions.delete(uid);
 
-    const userSessionPath = this.getUserSessionPath(userId);
+    if (wipe) {
+      const userPath = this.getUserSessionPath(uid);
+      if (fs.existsSync(userPath)) {
+        try {
+          fs.rmSync(userPath, { recursive: true, force: true });
+          console.log(`[Engine] Session wiped for user ${uid}`);
+        } catch (e) {
+          console.error(`[Engine] Wipe error for user ${uid}:`, e.message);
+        }
+      }
+    }
+  }
+
+  // ─── Main session creator ────────────────────────────────────────────────────
+  async createSession(userId, options = {}) {
+    const uid = String(userId);
+    const {
+      method = 'PAIRING',
+      phoneNumber = null,
+      callbacks = {},
+      isNewPairing = false,
+      reconnectAttempts = 0
+    } = options;
+
+    // Terminate existing session silently
+    await this._terminateSession(uid, isNewPairing);
+
+    const userSessionPath = this.getUserSessionPath(uid);
     const { state: authState, saveCreds } = await useMultiFileAuthState(userSessionPath);
 
-    // Fixed stable WA Web version for lightning-fast instant socket creation
-    const version = [2, 3000, 1044071294];
+    // Use latest stable WA Web version or fall back to fixed
+    let version;
+    try {
+      const { version: latestVersion } = await fetchLatestWaWebVersion();
+      version = latestVersion;
+    } catch (e) {
+      version = [2, 3000, 1044071294]; // safe fallback
+    }
 
     const logger = pino({ level: 'silent' });
 
@@ -101,15 +116,16 @@ class SessionManager {
       logger,
       auth: authState,
       printQRInTerminal: false,
-      browser: ['Windows', 'Chrome', '10.0.0'],
+      browser: ['WS Checker Pro', 'Chrome', '10.0.0'],
       syncFullHistory: false,
       generateHighQualityLinkPreview: false,
       markOnlineOnConnect: true,
-      keepAliveIntervalMs: 25000,
+      keepAliveIntervalMs: 20000,
       connectTimeoutMs: 60000,
       defaultQueryTimeoutMs: 60000,
-      retryRequestDelayMs: 2000,
-      maxMsgRetryCount: 5
+      retryRequestDelayMs: 1000,
+      maxMsgRetryCount: 3,
+      qrTimeout: 60000 // 60s before QR expires & refreshes
     });
 
     const sessionData = {
@@ -120,7 +136,10 @@ class SessionManager {
       pushName: null,
       pairingCode: null,
       isSocketReady: false,
-      callbacks
+      hasNotifiedConnected: false,
+      reconnectAttempts,
+      callbacks,
+      reconnectTimer: null
     };
 
     this.sessions.set(uid, sessionData);
@@ -130,157 +149,212 @@ class SessionManager {
     sock.ev.on('connection.update', async (update) => {
       const { connection, lastDisconnect, qr } = update;
 
+      // ── QR code received ──────────────────────────────────────────────────
       if (qr) {
         sessionData.isSocketReady = true;
-        if (method === 'QR') {
+        if (method === 'QR' && sessionData.callbacks.onQr) {
           try {
-            const qrBuffer = await QRCode.toBuffer(qr, { margin: 2, scale: 8 });
-            if (callbacks.onQr) callbacks.onQr(qrBuffer);
+            const qrBuffer = await QRCode.toBuffer(qr, {
+              margin: 2,
+              scale: 8,
+              color: { dark: '#128C7E', light: '#FFFFFF' } // WhatsApp green
+            });
+            sessionData.callbacks.onQr(qrBuffer);
           } catch (err) {
-            console.error(`QR buffer error for user ${uid}:`, err);
+            console.error(`[Engine] QR buffer error for user ${uid}:`, err);
           }
         }
       }
 
+      // ── Socket connecting ─────────────────────────────────────────────────
       if (connection === 'connecting') {
         sessionData.state = 'CONNECTING';
         sessionData.isSocketReady = false;
       }
 
+      // ── Socket open / connected ───────────────────────────────────────────
       if (connection === 'open') {
         sessionData.state = 'CONNECTED';
         sessionData.isSocketReady = true;
+        sessionData.reconnectAttempts = 0; // reset backoff on success
         const rawNum = sock.user?.id ? sock.user.id.split(':')[0].split('@')[0] : '';
         sessionData.userJid = rawNum ? `+${rawNum}` : 'Connected Account';
         sessionData.pushName = sock.user?.name || sock.user?.verifiedName || 'WhatsApp Account';
 
-        console.log(`[WS Checker Engine] User ${uid} connected successfully (${sessionData.userJid})`);
-        if (callbacks.onConnected && !sessionData.hasNotifiedConnected) {
+        console.log(`[Engine] User ${uid} connected (${sessionData.userJid})`);
+
+        if (sessionData.callbacks.onConnected && !sessionData.hasNotifiedConnected) {
           sessionData.hasNotifiedConnected = true;
-          callbacks.onConnected({
+          sessionData.callbacks.onConnected({
             userJid: sessionData.userJid,
             pushName: sessionData.pushName
           });
         }
       }
 
+      // ── Socket closed ─────────────────────────────────────────────────────
       if (connection === 'close') {
         sessionData.isSocketReady = false;
         const statusCode = lastDisconnect?.error?.output?.statusCode;
         const errObj = lastDisconnect?.error;
-        let errMsg = errObj ? (errObj.message || String(errObj)).toLowerCase() : '';
+        const errMsg = errObj ? (errObj.message || String(errObj)).toLowerCase() : '';
 
-        const isStreamError = errMsg.includes('515') || errMsg.includes('stream errored') || statusCode === 515;
-        const isRealLogout = errMsg.includes('loggedout') || errMsg.includes('conflict') || statusCode === 401 || statusCode === DisconnectReason.loggedOut;
-        const isTempDisconnect = (isStreamError && !isRealLogout) || errMsg.includes('restart') || errMsg.includes('timed out');
+        const isLoggedOut =
+          statusCode === DisconnectReason.loggedOut ||
+          statusCode === 401 ||
+          errMsg.includes('loggedout') ||
+          errMsg.includes('logged out');
 
-        let shouldReconnect = !isRealLogout;
-        if (isTempDisconnect) shouldReconnect = true;
+        const isConflict =
+          statusCode === 440 ||
+          errMsg.includes('conflict');
 
-        console.log(`[WS Checker Engine] Connection closed for user ${uid}. Status: ${statusCode}, Reconnect: ${shouldReconnect}`);
+        const isBadSession =
+          statusCode === 500 ||
+          errMsg.includes('bad session') ||
+          errMsg.includes('invalid session');
 
-        if (shouldReconnect) {
-          await delay(3000);
-          this.createSession(userId, { method, phoneNumber, callbacks: sessionData.callbacks, isNewPairing: false });
-        } else {
+        const isTempError =
+          statusCode === 515 ||
+          statusCode === 408 ||
+          errMsg.includes('timed out') ||
+          errMsg.includes('restart required') ||
+          errMsg.includes('stream errored') ||
+          errMsg.includes('connection failure');
+
+        const wasConnected = sessionData.hasNotifiedConnected;
+
+        console.log(`[Engine] Connection closed for user ${uid}. Status: ${statusCode}, WasConnected: ${wasConnected}`);
+
+        if (isLoggedOut || isConflict || isBadSession) {
+          // Real logout — wipe session, notify user
           sessionData.state = 'DISCONNECTED';
-          const wasConnectedBefore = sessionData.hasNotifiedConnected;
-          await this.disconnect(uid, true);
-          if (callbacks.onDisconnected && wasConnectedBefore) {
-            callbacks.onDisconnected('LOGGED_OUT');
+          await this._terminateSession(uid, true);
+          if (sessionData.callbacks.onDisconnected && wasConnected) {
+            sessionData.callbacks.onDisconnected('LOGGED_OUT');
           }
+        } else if (isTempError || !isLoggedOut) {
+          // Temporary error — exponential backoff reconnect
+          const attempts = sessionData.reconnectAttempts + 1;
+          const backoffMs = Math.min(2000 * Math.pow(1.5, attempts), 30000); // max 30s
+          console.log(`[Engine] Reconnecting user ${uid} in ${Math.round(backoffMs / 1000)}s (attempt ${attempts})...`);
+
+          sessionData.reconnectTimer = setTimeout(() => {
+            // Only reconnect if session wasn't manually terminated
+            if (this.sessions.has(uid)) {
+              this.createSession(userId, {
+                method,
+                phoneNumber,
+                callbacks: sessionData.callbacks,
+                isNewPairing: false,
+                reconnectAttempts: attempts
+              });
+            }
+          }, backoffMs);
         }
       }
     });
 
-    // Request Pairing Code if method is PAIRING
+    // ─── Pairing Code Request (immediate on socket ready) ───────────────────
     if (method === 'PAIRING' && phoneNumber && !sock.authState.creds.registered) {
-      setTimeout(async () => {
+      (async () => {
         const cleanNumber = phoneNumber.replace(/\D/g, '');
 
-        // Instant check: wait briefly for socket to open if connecting
-        for (let i = 0; i < 15; i++) {
+        // Wait up to 3s for socket to be ready
+        for (let i = 0; i < 30; i++) {
           if (sessionData.isSocketReady || sock.ws?.isOpen) break;
           await delay(100);
         }
 
         let attempts = 0;
-        while (attempts < 5) {
+        const maxAttempts = 5;
+
+        while (attempts < maxAttempts) {
+          // Abort if session was replaced or terminated
+          if (!this.sessions.has(uid) || this.sessions.get(uid) !== sessionData) return;
+
           try {
             attempts++;
-            console.log(`[WS Checker Engine] Requesting Pairing Code for +${cleanNumber} (Attempt ${attempts}/5)...`);
+            console.log(`[Engine] Requesting pairing code for +${cleanNumber} (attempt ${attempts}/${maxAttempts})...`);
             const code = await sock.requestPairingCode(cleanNumber);
             if (code) {
               sessionData.pairingCode = code;
               const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
-              console.log(`[WS Checker Engine] Pairing Code generated for user ${uid}: ${formattedCode}`);
-              if (callbacks.onPairingCode) callbacks.onPairingCode(formattedCode);
-              break;
+              console.log(`[Engine] Pairing code for user ${uid}: ${formattedCode}`);
+              if (sessionData.callbacks.onPairingCode) {
+                sessionData.callbacks.onPairingCode(formattedCode);
+              }
+              return; // success — stop loop
             }
           } catch (err) {
-            console.error(`Pairing code error (attempt ${attempts}):`, err.message);
-            await delay(500);
-            if (attempts >= 5) {
-              if (callbacks.onError) callbacks.onError(err.message);
+            console.error(`[Engine] Pairing code error (attempt ${attempts}):`, err.message);
+            if (attempts >= maxAttempts) {
+              if (sessionData.callbacks.onError) {
+                sessionData.callbacks.onError('Failed to generate pairing code. Please try again.');
+              }
+              return;
             }
+            await delay(1000 * attempts); // progressive delay: 1s, 2s, 3s...
           }
         }
-      }, 100);
+      })();
     }
 
     return sessionData;
   }
 
+  // ─── Public disconnect (triggered by user logout) ────────────────────────────
   async disconnect(userId, wipe = true) {
     const uid = String(userId);
     const session = this.sessions.get(uid);
 
     if (session) {
-      session.callbacks = {}; // Suppress unwanted disconnect notifications during manual disconnect
+      session.callbacks = {};
+      if (session.reconnectTimer) clearTimeout(session.reconnectTimer);
       if (session.sock) {
         try {
-          session.sock.ev.removeAllListeners('connection.update');
-          session.sock.ev.removeAllListeners('creds.update');
-          try {
-            await session.sock.logout();
-          } catch (e) {}
-          session.sock.end();
+          session.sock.ev.removeAllListeners();
+          try { await session.sock.logout(); } catch (e) {}
+          try { session.sock.end(); } catch (e) {}
         } catch (e) {}
       }
     }
-
     this.sessions.delete(uid);
 
     if (wipe) {
-      const userPath = this.getUserSessionPath(userId);
+      const userPath = this.getUserSessionPath(uid);
       if (fs.existsSync(userPath)) {
         try {
           fs.rmSync(userPath, { recursive: true, force: true });
-          console.log(`[WS Checker Engine] Fully purged session folder for user ${userId}`);
+          console.log(`[Engine] Fully purged session for user ${uid}`);
         } catch (e) {
-          console.error(`Error wiping session directory for user ${userId}:`, e.message);
+          console.error(`[Engine] Error purging session for user ${uid}:`, e.message);
         }
       }
     }
   }
 
+  // ─── Restore sessions on bot restart ────────────────────────────────────────
   async restoreSavedSessions() {
     if (!fs.existsSync(this.sessionDir)) return;
     try {
       const userFolders = fs.readdirSync(this.sessionDir);
       for (const userId of userFolders) {
         const userPath = path.join(this.sessionDir, userId);
-        if (fs.lstatSync(userPath).isDirectory() && fs.readdirSync(userPath).length > 0) {
-          console.log(`[WS Checker Engine] Restoring saved session for user ${userId}...`);
-          this.createSession(userId, { isNewPairing: false });
+        const credsFile = path.join(userPath, 'creds.json');
+        if (fs.lstatSync(userPath).isDirectory() && fs.existsSync(credsFile)) {
+          console.log(`[Engine] Restoring saved session for user ${userId}...`);
+          this.createSession(userId, { isNewPairing: false }).catch(() => {});
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('[Engine] Error restoring sessions:', e.message);
+    }
   }
 
   getActiveSessionsCount() {
     let count = 0;
-    for (const [uid, session] of this.sessions.entries()) {
+    for (const [, session] of this.sessions.entries()) {
       if (session.state === 'CONNECTED') count++;
     }
     return count;
