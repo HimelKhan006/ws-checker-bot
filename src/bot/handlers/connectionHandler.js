@@ -17,14 +17,25 @@ function registerConnectionHandlers(bot) {
 
     if (isConnected) {
       const session = sessionManager.getSession(userId);
+      const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
+      let numDisplay = 'Connected';
+      if (cleanNum) {
+        if (cleanNum.length > 7) {
+          numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
+        } else {
+          numDisplay = `+${cleanNum.substring(0, 3)}****`;
+        }
+      }
+
       return ctx.editMessageText(
         `🎉 *WhatsApp Account Already Connected!*\n\n` +
         `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
-        `📱 *Connected Number:* \`${session?.userJid || 'Connected'}\`\n` +
+        `📱 *Connected Number:* \`${numDisplay}\`\n` +
         `🟢 *Status:* Connected & Active\n\n` +
         `⚡ *Engine Status:* Operational & Ready to Check!`,
         {
-          parse_mode: 'Markdown'
+          parse_mode: 'Markdown',
+          ...getMainMenuKeyboard(true, false)
         }
       );
     }
@@ -135,18 +146,24 @@ function registerConnectionHandlers(bot) {
             ctx.session.tempMsgIds = [];
 
             const cleanNum = userJid ? userJid.split('@')[0].replace(/\D/g, '') : '';
-            const hiddenNumText = cleanNum
-              ? `<tg-spoiler><b>+${cleanNum}</b></tg-spoiler> (🙈 Tap to reveal)`
-              : '<tg-spoiler><b>Connected</b></tg-spoiler>';
+            let numDisplay = 'Connected';
+            if (cleanNum) {
+              if (cleanNum.length > 7) {
+                numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
+              } else {
+                numDisplay = `+${cleanNum.substring(0, 3)}****`;
+              }
+            }
 
             await ctx.reply(
-              `🎉 <b>WhatsApp Account Paired Successfully!</b>\n\n` +
-              `👤 <b>Account Name:</b> <code>${pushName}</code>\n` +
-              `📱 <b>Connected Number:</b> ${hiddenNumText}\n\n` +
-              `⚡ <b>Engine Status:</b> Active & Ready!\n` +
-              `Tap /check from the menu to start checking numbers!`,
+              `🎉 *WhatsApp Account Paired Successfully!*\n\n` +
+              `👤 *Account Name:* \`${pushName}\`\n` +
+              `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
+              `⚡ *Engine Status:* Active & Ready!\n` +
+              `Tap \`/check\` from the menu to start checking numbers!`,
               {
-                parse_mode: 'HTML'
+                parse_mode: 'Markdown',
+                ...getMainMenuKeyboard(true, false)
               }
             );
           },
@@ -412,18 +429,24 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
           ctx.session.tempMsgIds = [];
 
           const cleanNum = userJid ? userJid.split('@')[0].replace(/\D/g, '') : '';
-          const hiddenNumText = cleanNum
-            ? `<tg-spoiler><b>+${cleanNum}</b></tg-spoiler> (🙈 Tap to reveal)`
-            : '<tg-spoiler><b>Connected</b></tg-spoiler>';
+          let numDisplay = 'Connected';
+          if (cleanNum) {
+            if (cleanNum.length > 7) {
+              numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
+            } else {
+              numDisplay = `+${cleanNum.substring(0, 3)}****`;
+            }
+          }
 
           await ctx.reply(
-            `🎉 <b>WhatsApp Account Paired Successfully!</b>\n\n` +
-            `👤 <b>Account Name:</b> <code>${pushName}</code>\n` +
-            `📱 <b>Connected Number:</b> ${hiddenNumText}\n\n` +
-            `⚡ <b>Engine Status:</b> Active & Ready!\n` +
-            `Tap /check from the menu to start checking numbers!`,
+            `🎉 *WhatsApp Account Paired Successfully!*\n\n` +
+            `👤 *Account Name:* \`${pushName}\`\n` +
+            `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
+            `⚡ *Engine Status:* Active & Ready!\n` +
+            `Tap \`/check\` from the menu to start checking numbers!`,
             {
-              parse_mode: 'HTML'
+              parse_mode: 'Markdown',
+              ...getMainMenuKeyboard(true, false)
             }
           );
         },

@@ -621,6 +621,20 @@ function registerAdminHandlers(bot) {
       }
     }
 
+    let waNumberText = 'Disconnected';
+    if (isConnected) {
+      const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
+      let numDisplay = 'Connected';
+      if (cleanNum) {
+        if (cleanNum.length > 7) {
+          numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
+        } else {
+          numDisplay = `+${cleanNum.substring(0, 3)}****`;
+        }
+      }
+      waNumberText = `Connected (${numDisplay})`;
+    }
+
     return ctx.reply(
       `👤 *User Detailed Information*\n\n` +
       `🆔 *User ID:* \`${user.userId}\`\n` +
@@ -628,7 +642,7 @@ function registerAdminHandlers(bot) {
       `🏷️ *Username:* @${user.username || 'N/A'}\n` +
       `📅 *Joined Date:* \`${user.joinedAt.split('T')[0]}\`\n` +
       `🚫 *Banned Status:* \`${user.isBanned ? 'YES' : 'NO'}\`\n` +
-      `📱 *WhatsApp Status:* \`${isConnected ? 'Connected (' + (session?.userJid || '') + ')' : 'Disconnected'}\`\n` +
+      `📱 *WhatsApp Status:* \`${waNumberText}\`\n` +
       `🔗 *Referred By:* \`${user.referredBy || 'None'}\`\n` +
       `📊 *Total Referrals:* \`${user.referralCount || 0}\`` +
       refText,
