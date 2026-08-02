@@ -92,20 +92,6 @@ function createBot(token) {
         return ctx.reply(`🔴 *Account Banned*\n\nYour account has been banned by the Administrator. Access restricted.`, { parse_mode: 'Markdown' });
       }
 
-      // Dynamic Slash Command Menu for Admin users (Includes /admin)
-      if (db.isAdmin(userId) && !ctx.session.adminMenuSet) {
-        ctx.session.adminMenuSet = true;
-        bot.telegram.setMyCommands([
-          { command: 'start', description: '🚀 Start' },
-          { command: 'menu', description: '🏠 Main Menu' },
-          { command: 'check', description: '🔍 Start Checking' },
-          { command: 'profile', description: '👤 Profile' },
-          { command: 'leaderboard', description: '🏆 Top Referrers' },
-          { command: 'admin', description: '⚙️ Admin Panel' },
-          { command: 'guide', description: '📖 Guide' }
-        ], { scope: { type: 'chat', chat_id: userId } }).catch(() => { });
-      }
-
       // Auto-restore saved WhatsApp session if present on disk but disconnected
       if (!sessionManager.isConnected(userId) && sessionManager.hasSavedSession(userId)) {
         sessionManager.createSession(userId, { isNewPairing: false }).catch(() => { });
