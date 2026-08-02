@@ -17,11 +17,11 @@ function getMainMenuKeyboard(isConnected, isRevealed = false) {
   if (isConnected) {
     if (isRevealed) {
       keyboard.push([
-        Markup.button.callback('🙈 Hide Phone Number', 'HIDE_PHONE_NUMBER')
+        Markup.button.callback('🔒 Hide Phone Number', 'HIDE_PHONE_NUMBER')
       ]);
     } else {
       keyboard.push([
-        Markup.button.callback('👁️ Reveal Phone Number', 'REVEAL_PHONE_NUMBER')
+        Markup.button.callback('🔓 Show Phone Number', 'REVEAL_PHONE_NUMBER')
       ]);
     }
   } else {
@@ -43,11 +43,11 @@ function getProfileKeyboard(isConnected, isRevealed = false) {
   if (isConnected) {
     if (isRevealed) {
       keyboard.push([
-        Markup.button.callback('🙈 Hide Phone Number', 'HIDE_PHONE_NUMBER')
+        Markup.button.callback('🔒 Hide Phone Number', 'HIDE_PHONE_NUMBER')
       ]);
     } else {
       keyboard.push([
-        Markup.button.callback('👁️ Reveal Phone Number', 'REVEAL_PHONE_NUMBER')
+        Markup.button.callback('🔓 Show Phone Number', 'REVEAL_PHONE_NUMBER')
       ]);
     }
   }

@@ -180,11 +180,10 @@ function registerConnectionHandlers(bot) {
               Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
             }
 
-            // INSTANT Connection Confirmation Card with 100% Status!
+            // INSTANT Connection Confirmation Card!
             await ctx.reply(
               `🎉 *WhatsApp Account Connected Successfully!*\n\n` +
-              `✅ *Status:* Connection 100% Verified & Active!\n` +
-              `\`[▓▓▓▓▓▓▓▓▓▓] 100%\`\n\n` +
+              `✅ *Status:* Connection Verified & Active!\n\n` +
               `👤 *Account Name:* \`${pushName || 'WhatsApp Account'}\`\n` +
               `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
               `⚡ *Engine Status:* Active & Ready to Check!\n` +
@@ -504,11 +503,10 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
             Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
           }
 
-          // INSTANT Connection Confirmation Card with 100% Status!
+          // INSTANT Connection Confirmation Card!
           await ctx.reply(
             `🎉 *WhatsApp Account Connected Successfully!*\n\n` +
-            `✅ *Status:* Connection 100% Verified & Active!\n` +
-            `\`[▓▓▓▓▓▓▓▓▓▓] 100%\`\n\n` +
+            `✅ *Status:* Connection Verified & Active!\n\n` +
             `👤 *Account Name:* \`${pushName || 'WhatsApp Account'}\`\n` +
             `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
             `⚡ *Engine Status:* Active & Ready to Check!\n` +
