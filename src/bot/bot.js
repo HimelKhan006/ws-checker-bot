@@ -42,18 +42,20 @@ function createBot(token) {
   const visitedUsers = new Set();
   const userSessions = new Map();
 
-  // Purge and Register persistent Slash Commands menu
-  bot.telegram.deleteMyCommands().then(() => {
-    return bot.telegram.setMyCommands([
-      { command: 'start', description: '🚀 Start' },
-      { command: 'menu', description: '🏠 Main Menu' },
-      { command: 'check', description: '🔍 Start Checking' },
-      { command: 'profile', description: '👤 Profile' },
-      { command: 'leaderboard', description: '🏆 Top Referrers' },
-      { command: 'guide', description: '📖 Guide' },
-      { command: 'clear', description: '🧹 Clear Chat History' }
-    ]);
-  }).catch(() => { });
+  // Register persistent Telegram Slash Commands Menu
+  bot.telegram.setMyCommands([
+    { command: 'start', description: '🚀 Start' },
+    { command: 'menu', description: '🏠 Main Menu' },
+    { command: 'check', description: '🔍 Start Checking' },
+    { command: 'profile', description: '👤 Profile' },
+    { command: 'leaderboard', description: '🏆 Top Referrers' },
+    { command: 'guide', description: '📖 Guide' },
+    { command: 'clear', description: '🧹 Clear Chat History' }
+  ]).then(() => {
+    console.log('✅ Registered Telegram Bot Commands Menu (including /clear)');
+  }).catch((err) => {
+    console.error('⚠️ Could not set bot commands:', err.message);
+  });
 
   // Persistent Session Middleware per user (Multi-User Concurrent Isolation)
   bot.use(async (ctx, next) => {
