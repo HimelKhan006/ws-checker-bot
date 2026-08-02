@@ -184,8 +184,9 @@ class SessionManager {
           this.createSession(userId, { method, phoneNumber, callbacks: sessionData.callbacks, isNewPairing: false });
         } else {
           sessionData.state = 'DISCONNECTED';
+          const wasConnectedBefore = sessionData.hasNotifiedConnected;
           await this.disconnect(uid, true);
-          if (callbacks.onDisconnected) {
+          if (callbacks.onDisconnected && wasConnectedBefore) {
             callbacks.onDisconnected('LOGGED_OUT');
           }
         }
