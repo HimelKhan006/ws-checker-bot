@@ -246,25 +246,20 @@ function createBot(token) {
       header = `👋 *Welcome to WhatsApp Checker Bot, ${userName}!*\n\n` + guideText;
     }
 
-    // If NOT connected, show unified pairing prompt immediately with inline connection buttons!
+    // If NOT connected, show clean guide with a single Connect button
     if (!isConnected) {
-      ctx.session.state = 'AWAITING_PAIRING_NUMBER';
-      ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
       const msg = await ctx.reply(
         `${header}` +
         `⚠️ *WhatsApp Account Not Connected*\n` +
         `Please connect your WhatsApp account to start checking.\n\n` +
-        `1️⃣ *Send your phone number with country code below*\n` +
-        `   *Example:* \`8801700000000\`\n\n` +
-        `2️⃣ Or tap 📷 *Connect via QR Code* or 🔢 *Connect via Pairing Code* below:`,
+        `Tap the button below to connect your WhatsApp account:`,
         {
           parse_mode: 'Markdown',
-          ...getConnectionMethodKeyboard()
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback('🔗 Connect WhatsApp Account', 'MENU_CONNECT')]
+          ])
         }
       );
-      if (msg && msg.message_id) {
-        ctx.session.tempMsgIds.push(msg.message_id);
-      }
       return msg;
     }
 
@@ -305,22 +300,17 @@ function createBot(token) {
     const isConnected = sessionManager.isConnected(userId);
 
     if (!isConnected) {
-      ctx.session.state = 'AWAITING_PAIRING_NUMBER';
-      ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
       const msg = await ctx.reply(
         `⚠️ *WhatsApp Account Not Connected*\n` +
         `Please connect your WhatsApp account first before checking.\n\n` +
-        `1️⃣ *Send your phone number with country code below*\n` +
-        `   *Example:* \`8801700000000\`\n\n` +
-        `2️⃣ Or tap 📷 *Connect via QR Code* below:`,
+        `Tap the button below to connect:`,
         {
           parse_mode: 'Markdown',
-          ...getConnectionMethodKeyboard()
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback('🔗 Connect WhatsApp Account', 'MENU_CONNECT')]
+          ])
         }
       );
-      if (msg && msg.message_id) {
-        ctx.session.tempMsgIds.push(msg.message_id);
-      }
       return msg;
     }
 
@@ -346,6 +336,41 @@ function createBot(token) {
   // /menu command
   bot.command('menu', (ctx) => {
     return sendMainMenu(ctx, '🏠 *Main Menu*');
+  });
+
+  // /clear command — wipes all bot chat history and sends a fresh start
+  bot.command('clear', async (ctx) => {
+    const chatId = ctx.chat.id;
+    const currentMsgId = ctx.message?.message_id || 0;
+
+    // Stop any active timers
+    if (ctx.session.pairingTimer) { clearInterval(ctx.session.pairingTimer); ctx.session.pairingTimer = null; }
+    if (ctx.session.qrTimer) { clearTimeout(ctx.session.qrTimer); ctx.session.qrTimer = null; }
+    ctx.session.state = null;
+    ctx.session.pairingPromptMsgId = null;
+
+    // Build full set of IDs to delete (tracked + full sweep)
+    const idsToDelete = new Set();
+    if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
+      ctx.session.tempMsgIds.forEach(id => idsToDelete.add(id));
+      ctx.session.tempMsgIds = [];
+    }
+    // Sweep 500 message IDs backwards — covers entire bot conversation history
+    for (let id = currentMsgId; id >= Math.max(1, currentMsgId - 500); id--) {
+      idsToDelete.add(id);
+    }
+
+    // Delete in batches of 25 (respects Telegram rate limits)
+    const ids = [...idsToDelete];
+    const batchSize = 25;
+    for (let i = 0; i < ids.length; i += batchSize) {
+      const batch = ids.slice(i, i + batchSize);
+      await Promise.allSettled(batch.map(mId => ctx.telegram.deleteMessage(chatId, mId)));
+      if (i + batchSize < ids.length) await new Promise(r => setTimeout(r, 100));
+    }
+
+    // Fresh start
+    return sendMainMenu(ctx, '✨ *Chat Cleared! Fresh Start.*');
   });
 
   // /guide command
