@@ -889,15 +889,17 @@ function createBot(token) {
       }
     }
 
-    // If NOT connected, ONLY process pairing if state is AWAITING_PAIRING_NUMBER or replying to pairing prompt
+    // If NOT connected, process pairing if state is AWAITING_PAIRING_NUMBER, or if user is replying to pairing prompt, or if user sends phone number!
     if (!isConnected) {
       const replyMsg = ctx.message?.reply_to_message;
+      const text = ctx.message?.text?.trim() || '';
+      const isPhoneNumber = /^\+?\d{7,15}$/.test(text.replace(/[\s-]/g, ''));
       const isReplyingToPairingMsg = replyMsg && (
         (ctx.session.tempMsgIds && ctx.session.tempMsgIds.includes(replyMsg.message_id)) ||
         /Pairing Code|Connect WhatsApp|phone number|Connect via Pairing|WhatsApp Account Not Connected/i.test(replyMsg.text || '')
       );
 
-      if (state === 'AWAITING_PAIRING_NUMBER' || isReplyingToPairingMsg) {
+      if (state === 'AWAITING_PAIRING_NUMBER' || isReplyingToPairingMsg || isPhoneNumber) {
         return handlePairingPhoneNumberInput(ctx);
       }
       return sendMainMenu(ctx);

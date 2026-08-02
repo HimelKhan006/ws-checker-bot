@@ -289,24 +289,7 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
 
   ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
 
-  // Enforce Reply directly to Pairing Prompt Message
-  const replyMsg = ctx.message?.reply_to_message;
-  const isPairingPrompt = replyMsg && (
-    (ctx.session.tempMsgIds && ctx.session.tempMsgIds.includes(replyMsg.message_id)) ||
-    /Pairing Code|Connect WhatsApp|phone number|Connect via Pairing|WhatsApp Account Not Connected/i.test(replyMsg.text || replyMsg.caption || '')
-  );
 
-  if (ctx.message && !isPairingPrompt) {
-    const warningMsg = await ctx.reply(
-      `⚠️ *Reply Required*\n\nPlease tap/swipe and **Reply** directly to the *Connect via Pairing Code* prompt message to submit your phone number!`,
-      { reply_to_message_id: ctx.message.message_id, parse_mode: 'Markdown' }
-    );
-    ctx.session.tempMsgIds.push(ctx.message.message_id);
-    if (warningMsg && warningMsg.message_id) {
-      ctx.session.tempMsgIds.push(warningMsg.message_id);
-    }
-    return;
-  }
 
   if (ctx.message?.message_id) {
     ctx.session.tempMsgIds.push(ctx.message.message_id);
