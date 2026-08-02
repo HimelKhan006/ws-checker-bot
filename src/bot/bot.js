@@ -1,4 +1,4 @@
-const { Telegraf } = require('telegraf');
+const { Telegraf, Markup } = require('telegraf');
 const sessionManager = require('../whatsapp/SessionManager');
 const db = require('../utils/database');
 const { cleanupTempFiles } = require('../utils/reportGenerator');
@@ -50,7 +50,8 @@ function createBot(token) {
       { command: 'check', description: '🔍 Start Checking' },
       { command: 'profile', description: '👤 Profile' },
       { command: 'leaderboard', description: '🏆 Top Referrers' },
-      { command: 'guide', description: '📖 Guide' }
+      { command: 'guide', description: '📖 Guide' },
+      { command: 'clear', description: '🧹 Clear Chat History' }
     ]);
   }).catch(() => { });
 
