@@ -306,13 +306,8 @@ function createBot(token) {
     return ctx.reply(connectedText, connectedOptions).catch(() => {});
   };
 
-  // /start command (Handles both bot.start and /start slash command)
+  // /start command
   bot.start(async (ctx) => {
-    const payload = ctx.startPayload || (ctx.message?.text ? ctx.message.text.split(' ')[1] : null);
-    return sendMainMenu(ctx, null, payload);
-  });
-
-  bot.command('start', async (ctx) => {
     const payload = ctx.startPayload || (ctx.message?.text ? ctx.message.text.split(' ')[1] : null);
     return sendMainMenu(ctx, null, payload);
   });
