@@ -667,6 +667,33 @@ function createBot(token) {
     return sendMainMenu(ctx, '🏠 *Main Menu*');
   });
 
+  // 🧹 Clear Chat — deletes all tracked messages and sends a fresh start prompt
+  bot.action('CLEAR_CHAT', async (ctx) => {
+    await ctx.answerCbQuery('🧹 Clearing chat...').catch(() => {});
+    const userId = ctx.from.id;
+
+    // Stop any active timers
+    if (ctx.session.pairingTimer) { clearInterval(ctx.session.pairingTimer); ctx.session.pairingTimer = null; }
+    if (ctx.session.qrTimer) { clearTimeout(ctx.session.qrTimer); ctx.session.qrTimer = null; }
+    ctx.session.state = null;
+
+    // Delete triggered message
+    const clickedMsgId = ctx.callbackQuery?.message?.message_id;
+    const chatId = ctx.chat.id;
+    if (clickedMsgId) ctx.telegram.deleteMessage(chatId, clickedMsgId).catch(() => {});
+
+    // Delete all tracked temp messages
+    if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
+      const ids = [...ctx.session.tempMsgIds];
+      ctx.session.tempMsgIds = [];
+      Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(chatId, mId))).catch(() => {});
+    }
+
+    // Small delay then send a fresh clean start message
+    await new Promise(r => setTimeout(r, 400));
+    return sendMainMenu(ctx, '✨ *Chat Cleared! Fresh Start.*');
+  });
+
   // Cancel action - FULLY STOP & KILL QR Code / Pairing engine & delete temporary messages!
   bot.action('CANCEL_ACTION', async (ctx) => {
     await ctx.answerCbQuery().catch(() => { });

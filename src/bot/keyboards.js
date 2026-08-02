@@ -8,7 +8,9 @@ function getRemoveKeyboard() {
 }
 
 /**
- * Main Menu Inline Keyboard (Includes Reveal/Hide Number Button)
+ * Main Menu Inline Keyboard
+ * - Logout button REMOVED (only on profile)
+ * - Clear Chat button added
  */
 function getMainMenuKeyboard(isConnected, isRevealed = false) {
   const keyboard = [];
@@ -16,16 +18,13 @@ function getMainMenuKeyboard(isConnected, isRevealed = false) {
   if (isConnected) {
     if (isRevealed) {
       keyboard.push([
-        Markup.button.callback('🙈 Hide Phone Number (10s Timer)', 'HIDE_PHONE_NUMBER')
+        Markup.button.callback('🙈 Hide Phone Number', 'HIDE_PHONE_NUMBER')
       ]);
     } else {
       keyboard.push([
         Markup.button.callback('👁️ Reveal Phone Number', 'REVEAL_PHONE_NUMBER')
       ]);
     }
-    keyboard.push([
-      Markup.button.callback('🚪 Logout WhatsApp Account', 'MENU_LOGOUT')
-    ]);
   } else {
     keyboard.push([
       Markup.button.callback('🔢 Connect via Pairing Code', 'CONNECT_PAIRING'),
@@ -33,11 +32,15 @@ function getMainMenuKeyboard(isConnected, isRevealed = false) {
     ]);
   }
 
+  keyboard.push([
+    Markup.button.callback('🧹 Clear Chat', 'CLEAR_CHAT')
+  ]);
+
   return Markup.inlineKeyboard(keyboard);
 }
 
 /**
- * Profile Card Keyboard (Includes Leaderboard, Reveal/Hide Number, and Logout Button)
+ * Profile Card Keyboard (Includes Reveal/Hide, Leaderboard, Logout, Clear Chat)
  */
 function getProfileKeyboard(isConnected, isRevealed = false) {
   const keyboard = [];
@@ -45,7 +48,7 @@ function getProfileKeyboard(isConnected, isRevealed = false) {
   if (isConnected) {
     if (isRevealed) {
       keyboard.push([
-        Markup.button.callback('🙈 Hide Phone Number (10s Timer)', 'HIDE_PHONE_NUMBER')
+        Markup.button.callback('🙈 Hide Phone Number', 'HIDE_PHONE_NUMBER')
       ]);
     } else {
       keyboard.push([
@@ -63,6 +66,10 @@ function getProfileKeyboard(isConnected, isRevealed = false) {
       Markup.button.callback('🚪 Logout WhatsApp Account', 'MENU_LOGOUT')
     ]);
   }
+
+  keyboard.push([
+    Markup.button.callback('🧹 Clear Chat', 'CLEAR_CHAT')
+  ]);
 
   return Markup.inlineKeyboard(keyboard);
 }
@@ -87,6 +94,9 @@ function getConnectionMethodKeyboard() {
     [
       Markup.button.callback('🔢 Connect via Pairing Code', 'CONNECT_PAIRING'),
       Markup.button.callback('📷 Connect via QR Code', 'CONNECT_QR')
+    ],
+    [
+      Markup.button.callback('🧹 Clear Chat', 'CLEAR_CHAT')
     ]
   ]);
 }
@@ -103,6 +113,9 @@ function getReportKeyboard() {
     [
       Markup.button.callback('❌ Download Registered.csv', 'DL_REGISTERED_CSV'),
       Markup.button.callback('✅ Download Unregistered.csv', 'DL_UNREGISTERED_CSV')
+    ],
+    [
+      Markup.button.callback('🧹 Clear Chat', 'CLEAR_CHAT')
     ]
   ]);
 }
