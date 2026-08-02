@@ -270,18 +270,25 @@ function createBot(token) {
 
     const session = sessionManager.getSession(userId);
     const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
-    const hiddenNumText = cleanNum
-      ? `<tg-spoiler><b>+${cleanNum}</b></tg-spoiler> (🙈 Tap to reveal)`
-      : '<tg-spoiler><b>Connected</b></tg-spoiler>';
+    let numDisplay = 'Connected';
+    if (cleanNum) {
+      if (cleanNum.length > 7) {
+        numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
+      } else {
+        numDisplay = `+${cleanNum.substring(0, 3)}****`;
+      }
+    }
 
     return ctx.reply(
-      `🎉 <b>WhatsApp Account Connected & Active!</b>\n\n` +
-      `👤 <b>Account Name:</b> <code>${session.pushName || 'WhatsApp Account'}</code>\n` +
-      `📱 <b>Connected Number:</b> ${hiddenNumText}\n\n` +
-      `⚡ <b>WhatsApp Checking Engine:</b> Ready!\n` +
-      `Tap /check from the menu to start checking numbers!`,
+      `${header}` +
+      `🎉 *WhatsApp Account Connected & Active!*\n\n` +
+      `👤 *Account Name:* \`${session.pushName || 'WhatsApp Account'}\`\n` +
+      `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
+      `⚡ *WhatsApp Checking Engine:* Ready!\n` +
+      `Tap \`/check\` from the menu to start checking numbers!`,
       {
-        parse_mode: 'HTML'
+        parse_mode: 'Markdown',
+        ...getMainMenuKeyboard(true, false)
       }
     );
   };
@@ -458,36 +465,200 @@ function createBot(token) {
     const botUsername = ctx.botInfo?.username || 'KKHWsCheckerProBot';
     const refLink = `https://t.me/${botUsername}?start=ref_${userId}`;
 
-    let waStatusText = `📱 <b>WhatsApp Connection Status:</b>\n🔴 <b>Status:</b> Disconnected & Offline`;
+    let waStatusText = `📱 *WhatsApp Connection Status:*\n🔴 *Status:* Disconnected & Offline`;
     if (isConnected) {
       const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
-      const hiddenNumText = cleanNum
-        ? `<tg-spoiler><b>+${cleanNum}</b></tg-spoiler> (🙈 Tap to reveal)`
-        : '<tg-spoiler><b>Connected</b></tg-spoiler>';
+      let numDisplay = 'Connected';
+      if (cleanNum) {
+        if (cleanNum.length > 7) {
+          numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
+        } else {
+          numDisplay = `+${cleanNum.substring(0, 3)}****`;
+        }
+      }
 
       waStatusText =
-        `📱 <b>WhatsApp Connection Status:</b>\n` +
-        `🟢 <b>Status:</b> Connected & Active\n` +
-        `👤 <b>Account Name:</b> <code>${session?.pushName || 'WhatsApp Account'}</code>\n` +
-        `📱 <b>Connected Number:</b> ${hiddenNumText}\n` +
-        `⚡ <b>Engine Status:</b> Operational & Ready to Check!`;
+        `📱 *WhatsApp Connection Status:*\n` +
+        `🟢 *Status:* Connected & Active\n` +
+        `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
+        `📱 *Connected Number:* \`${numDisplay}\`\n` +
+        `⚡ *Engine Status:* Operational & Ready to Check!`;
     }
 
     return ctx.reply(
-      `👤 <b>Telegram User Profile & Account Status</b>\n\n` +
-      `🆔 <b>Telegram User ID:</b> <code>${userId}</code>\n` +
-      `👤 <b>Name:</b> <code>${ctx.from.first_name} ${ctx.from.last_name || ''}</code>\n` +
-      `🏷️ <b>Username:</b> @${ctx.from.username || 'N/A'}\n` +
-      `👑 <b>Admin Status:</b> <code>${isAdminUser ? 'YES (Administrator)' : 'NO (User)'}</code>\n\n` +
+      `👤 *Telegram User Profile & Account Status*\n\n` +
+      `🆔 *Telegram User ID:* \`${userId}\`\n` +
+      `👤 *Name:* \`${ctx.from.first_name} ${ctx.from.last_name || ''}\`\n` +
+      `🏷️ *Username:* @${ctx.from.username || 'N/A'}\n` +
+      `👑 *Admin Status:* \`${isAdminUser ? 'YES (Administrator)' : 'NO (User)'}\`\n\n` +
       `${waStatusText}\n\n` +
-      `👥 <b>Referral System Details:</b>\n` +
-      `• <b>Total Users Invited:</b> <code>${user?.referralCount || 0}</code>\n` +
-      `• <b>Your Personal Referral Link:</b>\n<code>${refLink}</code>`,
+      `👥 *Referral System Details:*\n` +
+      `• *Total Users Invited:* \`${user?.referralCount || 0}\`\n` +
+      `• *Your Personal Referral Link:*\n\`${refLink}\``,
       {
-        parse_mode: 'HTML',
-        ...getProfileKeyboard(isConnected)
+        parse_mode: 'Markdown',
+        ...getProfileKeyboard(isConnected, false)
       }
     );
+  });
+
+  const revealTimers = new Map();
+
+  // Reveal Phone Number Callback (Unmasks number for 10 seconds, then auto-hides)
+  bot.action('REVEAL_PHONE_NUMBER', async (ctx) => {
+    const userId = ctx.from.id;
+    const isConnected = sessionManager.isConnected(userId);
+    if (!isConnected) {
+      return ctx.answerCbQuery('⚠️ WhatsApp not connected!', { show_alert: true }).catch(() => {});
+    }
+
+    await ctx.answerCbQuery('🔓 Number revealed! Auto-hiding in 10 seconds...').catch(() => {});
+
+    const session = sessionManager.getSession(userId);
+    const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
+    const fullNum = cleanNum ? `+${cleanNum}` : 'Connected';
+    const msgId = ctx.callbackQuery?.message?.message_id;
+    const chatId = ctx.chat.id;
+    const timerKey = `${chatId}_${msgId}`;
+
+    if (revealTimers.has(timerKey)) {
+      clearTimeout(revealTimers.get(timerKey));
+      revealTimers.delete(timerKey);
+    }
+
+    const isProfile = ctx.callbackQuery?.message?.text?.includes('Profile') ||
+                      ctx.callbackQuery?.message?.text?.includes('Telegram User Profile');
+
+    const renderCard = (revealed) => {
+      let numDisplay = '';
+      if (revealed) {
+        numDisplay = fullNum;
+      } else {
+        if (cleanNum.length > 7) {
+          numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
+        } else {
+          numDisplay = `+${cleanNum.substring(0, 3)}****`;
+        }
+      }
+
+      const user = db.getUser(userId);
+      const isAdminUser = db.isAdmin(userId);
+      const botUsername = ctx.botInfo?.username || 'KKHWsCheckerProBot';
+      const refLink = `https://t.me/${botUsername}?start=ref_${userId}`;
+
+      if (isProfile) {
+        return ctx.editMessageText(
+          `👤 *Telegram User Profile & Account Status*\n\n` +
+          `🆔 *Telegram User ID:* \`${userId}\`\n` +
+          `👤 *Name:* \`${ctx.from.first_name} ${ctx.from.last_name || ''}\`\n` +
+          `🏷️ *Username:* @${ctx.from.username || 'N/A'}\n` +
+          `👑 *Admin Status:* \`${isAdminUser ? 'YES (Administrator)' : 'NO (User)'}\`\n\n` +
+          `📱 *WhatsApp Connection Status:*\n` +
+          `🟢 *Status:* Connected & Active\n` +
+          `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
+          `📱 *Connected Number:* \`${numDisplay}\`\n` +
+          `⚡ *Engine Status:* Operational & Ready to Check!\n\n` +
+          `👥 *Referral System Details:*\n` +
+          `• *Total Users Invited:* \`${user?.referralCount || 0}\`\n` +
+          `• *Your Personal Referral Link:*\n\`${refLink}\``,
+          {
+            parse_mode: 'Markdown',
+            ...getProfileKeyboard(true, revealed)
+          }
+        ).catch(() => {});
+      } else {
+        return ctx.editMessageText(
+          `🚀 *Bot Main Menu*\n\n` +
+          `🎉 *WhatsApp Account Connected & Active!*\n\n` +
+          `👤 *Account Name:* \`${session.pushName || 'WhatsApp Account'}\`\n` +
+          `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
+          `⚡ *WhatsApp Checking Engine:* Ready!\n` +
+          `Tap \`/check\` from the menu to start checking numbers!`,
+          {
+            parse_mode: 'Markdown',
+            ...getMainMenuKeyboard(true, revealed)
+          }
+        ).catch(() => {});
+      }
+    };
+
+    // Show revealed state
+    await renderCard(true);
+
+    // Schedule 10-second auto-hide timer
+    const autoHideTimer = setTimeout(async () => {
+      revealTimers.delete(timerKey);
+      await renderCard(false);
+    }, 10000);
+
+    revealTimers.set(timerKey, autoHideTimer);
+  });
+
+  // Hide Phone Number Callback (Immediately hides number & clears timer)
+  bot.action('HIDE_PHONE_NUMBER', async (ctx) => {
+    const userId = ctx.from.id;
+    await ctx.answerCbQuery('🔒 Number hidden.').catch(() => {});
+
+    const msgId = ctx.callbackQuery?.message?.message_id;
+    const chatId = ctx.chat.id;
+    const timerKey = `${chatId}_${msgId}`;
+
+    if (revealTimers.has(timerKey)) {
+      clearTimeout(revealTimers.get(timerKey));
+      revealTimers.delete(timerKey);
+    }
+
+    const session = sessionManager.getSession(userId);
+    const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
+    const user = db.getUser(userId);
+    const isAdminUser = db.isAdmin(userId);
+    const botUsername = ctx.botInfo?.username || 'KKHWsCheckerProBot';
+    const refLink = `https://t.me/${botUsername}?start=ref_${userId}`;
+
+    let numDisplay = '';
+    if (cleanNum.length > 7) {
+      numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
+    } else {
+      numDisplay = `+${cleanNum.substring(0, 3)}****`;
+    }
+
+    const isProfile = ctx.callbackQuery?.message?.text?.includes('Profile') ||
+                      ctx.callbackQuery?.message?.text?.includes('Telegram User Profile');
+
+    if (isProfile) {
+      return ctx.editMessageText(
+        `👤 *Telegram User Profile & Account Status*\n\n` +
+        `🆔 *Telegram User ID:* \`${userId}\`\n` +
+        `👤 *Name:* \`${ctx.from.first_name} ${ctx.from.last_name || ''}\`\n` +
+        `🏷️ *Username:* @${ctx.from.username || 'N/A'}\n` +
+        `👑 *Admin Status:* \`${isAdminUser ? 'YES (Administrator)' : 'NO (User)'}\`\n\n` +
+        `📱 *WhatsApp Connection Status:*\n` +
+        `🟢 *Status:* Connected & Active\n` +
+        `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
+        `📱 *Connected Number:* \`${numDisplay}\`\n` +
+        `⚡ *Engine Status:* Operational & Ready to Check!\n\n` +
+        `👥 *Referral System Details:*\n` +
+        `• *Total Users Invited:* \`${user?.referralCount || 0}\`\n` +
+        `• *Your Personal Referral Link:*\n\`${refLink}\``,
+        {
+          parse_mode: 'Markdown',
+          ...getProfileKeyboard(true, false)
+        }
+      ).catch(() => {});
+    } else {
+      return ctx.editMessageText(
+        `🚀 *Bot Main Menu*\n\n` +
+        `🎉 *WhatsApp Account Connected & Active!*\n\n` +
+        `👤 *Account Name:* \`${session.pushName || 'WhatsApp Account'}\`\n` +
+        `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
+        `⚡ *WhatsApp Checking Engine:* Ready!\n` +
+        `Tap \`/check\` from the menu to start checking numbers!`,
+        {
+          parse_mode: 'Markdown',
+          ...getMainMenuKeyboard(true, false)
+        }
+      ).catch(() => {});
+    }
   });
 
   // Main menu callback action

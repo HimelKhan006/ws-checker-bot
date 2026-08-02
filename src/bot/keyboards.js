@@ -10,10 +10,20 @@ function getRemoveKeyboard() {
 /**
  * Main Menu Inline Keyboard
  */
-function getMainMenuKeyboard(isConnected) {
+function getMainMenuKeyboard(isConnected, isRevealed = false) {
   const keyboard = [];
 
-  if (!isConnected) {
+  if (isConnected) {
+    if (isRevealed) {
+      keyboard.push([
+        Markup.button.callback('🙈 Hide Phone Number (10s Timer)', 'HIDE_PHONE_NUMBER')
+      ]);
+    } else {
+      keyboard.push([
+        Markup.button.callback('👁️ Reveal Phone Number', 'REVEAL_PHONE_NUMBER')
+      ]);
+    }
+  } else {
     keyboard.push([
       Markup.button.callback('🔢 Connect via Pairing Code', 'CONNECT_PAIRING'),
       Markup.button.callback('📷 Connect via QR Code', 'CONNECT_QR')
@@ -24,12 +34,26 @@ function getMainMenuKeyboard(isConnected) {
 }
 
 /**
- * Profile Card Keyboard (Includes Leaderboard and Logout Button if connected)
+ * Profile Card Keyboard (Includes Leaderboard, Reveal/Hide Number, and Logout Button)
  */
-function getProfileKeyboard(isConnected) {
-  const keyboard = [
-    [Markup.button.callback('🏆 View Referral Leaderboard', 'VIEW_LEADERBOARD')]
-  ];
+function getProfileKeyboard(isConnected, isRevealed = false) {
+  const keyboard = [];
+
+  if (isConnected) {
+    if (isRevealed) {
+      keyboard.push([
+        Markup.button.callback('🙈 Hide Phone Number (10s Timer)', 'HIDE_PHONE_NUMBER')
+      ]);
+    } else {
+      keyboard.push([
+        Markup.button.callback('👁️ Reveal Phone Number', 'REVEAL_PHONE_NUMBER')
+      ]);
+    }
+  }
+
+  keyboard.push([
+    Markup.button.callback('🏆 View Referral Leaderboard', 'VIEW_LEADERBOARD')
+  ]);
 
   if (isConnected) {
     keyboard.push([

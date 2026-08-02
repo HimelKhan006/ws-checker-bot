@@ -266,16 +266,16 @@ function registerAdminHandlers(bot) {
     );
   });
 
-  // Action callback to delete broadcast
+  // Action callback to delete broadcast (Edits summary card directly in-place)
   bot.action(/^DEL_BC_(.+)$/, async (ctx) => {
     if (!checkAdmin(ctx)) return;
-    await ctx.answerCbQuery().catch(() => {});
+    await ctx.answerCbQuery('🗑️ Deleting broadcast messages...').catch(() => {});
 
     const broadcastId = ctx.match[1];
     const logs = broadcastStore.get(broadcastId);
 
     if (!logs || logs.length === 0) {
-      return ctx.reply(`⚠️ *Broadcast Log Expired or Already Deleted.*`, { parse_mode: 'Markdown' });
+      return ctx.editMessageText(`⚠️ *Broadcast Log Expired or Already Deleted.*`, { parse_mode: 'Markdown' }).catch(() => {});
     }
 
     let deletedCount = 0;
@@ -288,27 +288,32 @@ function registerAdminHandlers(bot) {
 
     broadcastStore.delete(broadcastId);
 
-    return ctx.reply(
+    return ctx.editMessageText(
       `🗑️ *Broadcast Message Deleted Successfully!*\n\n` +
       `🆔 *Broadcast ID:* \`${broadcastId}\`\n` +
-      `✅ *Deleted from:* \`${deletedCount}/${logs.length}\` users' Telegram chats.`,
+      `✅ *Recalled / Deleted from:* \`${deletedCount}/${logs.length}\` users' Telegram chats.`,
       { parse_mode: 'Markdown' }
-    );
+    ).catch(() => {});
   });
 
-  // Action callback to delete single direct message
+  // Action callback to delete single direct message (Edits log card directly in-place)
   bot.action(/^DEL_SINGLE_(\d+)_(\d+)$/, async (ctx) => {
     if (!checkAdmin(ctx)) return;
-    await ctx.answerCbQuery().catch(() => {});
+    await ctx.answerCbQuery('🗑️ Deleting direct message...').catch(() => {});
 
     const chatId = ctx.match[1];
     const msgId = ctx.match[2];
 
     try {
       await bot.telegram.deleteMessage(chatId, msgId);
-      return ctx.reply(`🗑️ *Message \`${msgId}\` in chat \`${chatId}\` deleted successfully.*`, { parse_mode: 'Markdown' });
+      return ctx.editMessageText(
+        `🗑️ *Direct Message Deleted Successfully!*\n\n` +
+        `🆔 *Target Chat ID:* \`${chatId}\`\n` +
+        `📩 *Deleted Message ID:* \`${msgId}\``,
+        { parse_mode: 'Markdown' }
+      ).catch(() => {});
     } catch (e) {
-      return ctx.reply(`❌ *Failed to delete message:* ${e.message}`, { parse_mode: 'Markdown' });
+      return ctx.editMessageText(`❌ *Failed to delete message:* ${e.message}`, { parse_mode: 'Markdown' }).catch(() => {});
     }
   });
 
