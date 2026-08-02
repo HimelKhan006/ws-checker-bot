@@ -70,19 +70,19 @@ if (!token || token === 'YOUR_TELEGRAM_BOT_TOKEN_HERE') {
     console.log(`⚡ WhatsApp Engine: Operational & Ready`);
     console.log(`==================================================\n`);
 
+    // Send Admin Notification IMMEDIATELY when bot server starts
+    await sendAdminNotification(
+      `🚀 *Bot Server Status Alert*\n\n` +
+      `🟢 *Status:* *ONLINE & OPERATIONAL*\n` +
+      `💻 *Server Mode:* \`${serverModeText}\`\n` +
+      `🤖 *Bot Account:* \`${botUsername}\`\n` +
+      `⏰ *Timestamp:* \`${new Date().toLocaleTimeString()}\`\n\n` +
+      `✅ *Bot is now online and polling for Telegram messages!*`
+    );
+
     // Auto-Healing Polling Launcher with Conflict Recovery
     const startPolling = () => {
-      bot.launch({ dropPendingUpdates: true }).then(() => {
-        // Send Admin Notification when bot goes online
-        sendAdminNotification(
-          `🚀 *Bot Server Status Alert*\n\n` +
-          `🟢 *Status:* *ONLINE & OPERATIONAL*\n` +
-          `💻 *Server Mode:* \`${serverModeText}\`\n` +
-          `🤖 *Bot Account:* \`${botUsername}\`\n` +
-          `⏰ *Timestamp:* \`${new Date().toLocaleTimeString()}\`\n\n` +
-          `✅ *Bot is now online and polling for Telegram messages!*`
-        );
-      }).catch((err) => {
+      bot.launch({ dropPendingUpdates: true }).catch((err) => {
         console.error('❌ Bot polling conflict/error:', err.message);
         db.logSystemError(err.message);
         console.log('🔄 Re-establishing Telegram polling connection in 3 seconds...');
@@ -93,16 +93,23 @@ if (!token || token === 'YOUR_TELEGRAM_BOT_TOKEN_HERE') {
     startPolling();
 
     // Enable graceful stop with Offline Notification
+    let isShutdownHandled = false;
     const handleShutdown = async (signal) => {
+      if (isShutdownHandled) return;
+      isShutdownHandled = true;
       console.log(`🛑 Shutdown signal (${signal}) received. Notifying admins & stopping bot...`);
-      await sendAdminNotification(
-        `🚨 *Bot Server Status Alert*\n\n` +
-        `🔴 *Status:* *OFFLINE / SHUTDOWN*\n` +
-        `💻 *Server Mode:* \`${serverModeText}\`\n` +
-        `⚠️ *Reason:* \`Server process terminating (${signal})\`\n` +
-        `⏰ *Timestamp:* \`${new Date().toLocaleTimeString()}\``
-      );
-      bot.stop(signal);
+      try {
+        await sendAdminNotification(
+          `🚨 *Bot Server Status Alert*\n\n` +
+          `🔴 *Status:* *OFFLINE / SHUTDOWN*\n` +
+          `💻 *Server Mode:* \`${serverModeText}\`\n` +
+          `⚠️ *Reason:* \`Server process terminating (${signal})\`\n` +
+          `⏰ *Timestamp:* \`${new Date().toLocaleTimeString()}\``
+        );
+      } catch (e) {}
+      try {
+        bot.stop(signal);
+      } catch (e) {}
       process.exit(0);
     };
 

@@ -269,11 +269,14 @@ function createBot(token) {
     }
 
     const session = sessionManager.getSession(userId);
+    const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
+    const hiddenNumText = cleanNum ? `||+${cleanNum}|| (🙈 Tap to reveal)` : '||Connected||';
+
     return ctx.reply(
       `${header}` +
       `🎉 *WhatsApp Account Connected & Active!*\n\n` +
       `👤 *Account Name:* \`${session.pushName || 'WhatsApp Account'}\`\n` +
-      `📱 *Connected Number:* \`${session.userJid}\`\n\n` +
+      `📱 *Connected Number:* ${hiddenNumText}\n\n` +
       `⚡ *WhatsApp Checking Engine:* Ready!\n` +
       `Tap \`/check\` from the menu to start checking numbers!`,
       {
@@ -456,11 +459,14 @@ function createBot(token) {
 
     let waStatusText = `📱 *WhatsApp Connection Status:*\n🔴 *Status:* Disconnected & Offline`;
     if (isConnected) {
+      const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
+      const hiddenNumText = cleanNum ? `||+${cleanNum}|| (🙈 Tap to reveal)` : '||Connected||';
+
       waStatusText =
         `📱 *WhatsApp Connection Status:*\n` +
         `🟢 *Status:* Connected & Active\n` +
         `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
-        `📱 *Connected Number:* \`${session?.userJid || 'Connected'}\`\n` +
+        `📱 *Connected Number:* ${hiddenNumText}\n` +
         `⚡ *Engine Status:* Operational & Ready to Check!`;
     }
 

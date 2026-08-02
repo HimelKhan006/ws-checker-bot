@@ -134,10 +134,13 @@ function registerConnectionHandlers(bot) {
             }
             ctx.session.tempMsgIds = [];
 
+            const cleanNum = userJid ? userJid.split('@')[0].replace(/\D/g, '') : '';
+            const hiddenNumText = cleanNum ? `||+${cleanNum}|| (🙈 Tap to reveal)` : '||Connected||';
+
             await ctx.reply(
               `🎉 *WhatsApp Account Paired Successfully!*\n\n` +
               `👤 *Account Name:* \`${pushName}\`\n` +
-              `📱 *Connected Number:* \`${userJid}\`\n\n` +
+              `📱 *Connected Number:* ${hiddenNumText}\n\n` +
               `⚡ *Engine Status:* Active & Ready!\n` +
               `Tap \`/check\` from the menu to start checking numbers!`,
               {
@@ -400,10 +403,13 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
           }
           ctx.session.tempMsgIds = [];
 
+          const cleanNum = userJid ? userJid.split('@')[0].replace(/\D/g, '') : '';
+          const hiddenNumText = cleanNum ? `||+${cleanNum}|| (🙈 Tap to reveal)` : '||Connected||';
+
           await ctx.reply(
             `🎉 *WhatsApp Account Paired Successfully!*\n\n` +
             `👤 *Account Name:* \`${pushName}\`\n` +
-            `📱 *Connected Number:* \`${userJid}\`\n\n` +
+            `📱 *Connected Number:* ${hiddenNumText}\n\n` +
             `⚡ *Engine Status:* Active & Ready!\n` +
             `Tap \`/check\` from the menu to start checking numbers!`,
             {
