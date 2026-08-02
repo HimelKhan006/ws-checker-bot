@@ -229,11 +229,11 @@ async function handleBulkCheckInput(ctx) {
   }
 
   const progressMsg = await ctx.reply(
-    `⏳ *Starting WhatsApp Presence Check...*\n\n` +
+    `⚡ *Processing WhatsApp Registration Check...*\n\n` +
     `📊 *Total Numbers:* \`${numbers.length}\`\n` +
-    `Progress: \`[░░░░░░░░░░] 0%\` (0/${numbers.length})\n` +
-    `🔴 Registered (Red Tag): 0\n` +
-    `🟢 Unregistered (Green Tag): 0`,
+    `*Progress:* \`[░░░░░░░░░░] 0%\` (0/${numbers.length})\n\n` +
+    `🔴 *REGISTERED:* \`0\`\n` +
+    `🟢 *UNREGISTERED:* \`0\``,
     { parse_mode: 'Markdown' }
   );
 
@@ -245,7 +245,7 @@ async function handleBulkCheckInput(ctx) {
       maxLimit: 1000,
       onProgress: async (progress) => {
         const now = Date.now();
-        if (now - lastUpdateTime > 500 || progress.current === progress.total) {
+        if (now - lastUpdateTime > 350 || progress.current === progress.total) {
           lastUpdateTime = now;
           const bar = renderProgressBar(progress.percentage);
           try {
@@ -253,7 +253,8 @@ async function handleBulkCheckInput(ctx) {
               ctx.chat.id,
               progressMsg.message_id,
               null,
-              `⏳ *Checking WhatsApp Presence...*\n\n` +
+              `⚡ *Processing WhatsApp Registration Check...*\n\n` +
+              `📊 *Total Numbers:* \`${progress.total}\`\n` +
               `*Progress:* \`${bar}\` (${progress.current}/${progress.total})\n\n` +
               `🔴 *REGISTERED:* \`${progress.registered}\`\n` +
               `🟢 *UNREGISTERED:* \`${progress.unregistered}\``,
@@ -264,7 +265,7 @@ async function handleBulkCheckInput(ctx) {
       }
     });
 
-    // Delete progress message before sending final results
+    // Auto-delete processing card cleanly before sending final results
     await ctx.telegram.deleteMessage(ctx.chat.id, progressMsg.message_id).catch(() => {});
 
     // Generate downloadable report files
