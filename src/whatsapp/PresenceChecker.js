@@ -45,7 +45,7 @@ class PresenceChecker {
     const maxLimit = options.maxLimit || 1000;
     const targetNumbers = numbers.slice(0, maxLimit);
     const delayMs = options.delayMs !== undefined ? options.delayMs : DEFAULT_DELAY_MS;
-    const batchSize = options.batchSize || 10;
+    const batchSize = options.batchSize || 25;
     const onProgress = options.onProgress || (() => {});
     const isCancelled = options.isCancelled || (() => false);
 
