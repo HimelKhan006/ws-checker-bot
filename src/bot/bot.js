@@ -724,7 +724,7 @@ function createBot(token) {
 
     // Ignore commands starting with '/' so command handlers process them exclusively
     if (text.startsWith('/')) {
-      return next();
+      return;
     }
 
     const userId = ctx.from.id;
