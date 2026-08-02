@@ -6,6 +6,15 @@ const sessionManager = require('../../whatsapp/SessionManager');
 const broadcastStore = new Map();
 
 const executeBroadcast = async (bot, ctx, text) => {
+  // Auto-delete Admin's typed message and prompt message for a 100% spotless chat
+  if (ctx.message?.message_id) {
+    ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => {});
+  }
+  if (ctx.session.adminPromptMsgId) {
+    ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.adminPromptMsgId).catch(() => {});
+    ctx.session.adminPromptMsgId = null;
+  }
+
   const users = db.getAllUsers();
   const broadcastId = `BC_${Date.now()}`;
   const deliveryLogs = [];
@@ -64,6 +73,15 @@ const executeBroadcast = async (bot, ctx, text) => {
 };
 
 const executeDirectMessage = async (bot, ctx, targetUserId, messageText) => {
+  // Auto-delete Admin's typed message and prompt message for a 100% spotless chat
+  if (ctx.message?.message_id) {
+    ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => {});
+  }
+  if (ctx.session.adminPromptMsgId) {
+    ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.adminPromptMsgId).catch(() => {});
+    ctx.session.adminPromptMsgId = null;
+  }
+
   try {
     const sentMsg = await bot.telegram.sendMessage(
       targetUserId,
@@ -388,10 +406,11 @@ function registerAdminHandlers(bot) {
     await ctx.answerCbQuery().catch(() => {});
     ctx.session.state = 'AWAITING_ADMIN_BROADCAST';
 
-    return ctx.reply(
+    const promptMsg = await ctx.reply(
       `📢 *Broadcast System*\n\nPlease reply with the text message or announcement you want to broadcast to ALL bot users.`,
       { parse_mode: 'Markdown' }
     );
+    if (promptMsg?.message_id) ctx.session.adminPromptMsgId = promptMsg.message_id;
   });
 
   // Admin Direct Message Prompt Callback
@@ -400,10 +419,11 @@ function registerAdminHandlers(bot) {
     await ctx.answerCbQuery().catch(() => {});
     ctx.session.state = 'AWAITING_ADMIN_DIRECT_MSG';
 
-    return ctx.reply(
+    const promptMsg = await ctx.reply(
       `💬 *Direct Message System*\n\nPlease send the User ID and message in this format:\n\n*Format:* \`<userId> <message>\`\n*Example:* \`123456789 Hello from Admin!\``,
       { parse_mode: 'Markdown' }
     );
+    if (promptMsg?.message_id) ctx.session.adminPromptMsgId = promptMsg.message_id;
   });
 
   // Admin Ban User Prompt Callback
