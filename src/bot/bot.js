@@ -896,10 +896,11 @@ function createBot(token) {
     ).catch(() => {});
   });
 
-  // Cancel action - FULLY STOP & KILL QR Code / Pairing engine & delete temporary messages!
+  // Cancel action — In-place transition back to Main Menu (Prevents Telegram 'START' button popup)
   bot.action('CANCEL_ACTION', async (ctx) => {
     await ctx.answerCbQuery().catch(() => { });
     const userId = ctx.from.id;
+    const currentMsgId = ctx.callbackQuery?.message?.message_id;
 
     if (ctx.session.pairingTimer) {
       clearInterval(ctx.session.pairingTimer);
@@ -910,26 +911,70 @@ function createBot(token) {
       ctx.session.qrTimer = null;
     }
 
-    // Auto-delete ALL recorded temporary messages (QR photos, pairing codes, prompts)
-    if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
-      for (const msgId of ctx.session.tempMsgIds) {
-        ctx.telegram.deleteMessage(ctx.chat.id, msgId).catch(() => { });
-      }
-    }
-    ctx.session.tempMsgIds = [];
-
-    // Delete current message if not already deleted
-    if (ctx.callbackQuery?.message?.message_id) {
-      ctx.telegram.deleteMessage(ctx.chat.id, ctx.callbackQuery.message.message_id).catch(() => { });
-    }
-
-    // Fully stop, kill, and wipe un-paired background session socket
+    // Safely disconnect un-paired temporary QR socket
     if (!sessionManager.isConnected(userId)) {
-      await sessionManager.disconnect(userId, true).catch(() => { });
+      sessionManager.disconnect(userId, true).catch(() => { });
     }
 
     ctx.session.state = null;
-    return sendMainMenu(ctx, '🏠 *Main Menu*');
+
+    // Delete all OTHER temp messages (e.g. QR photo cards), but keep current message to edit in-place
+    if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
+      const ids = ctx.session.tempMsgIds.filter(id => id !== currentMsgId);
+      ctx.session.tempMsgIds = [];
+      Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => { });
+    }
+
+    // Render Main Menu card in-place on current message (No message gap, No 'START' button!)
+    const isConnected = sessionManager.isConnected(userId);
+    const session = sessionManager.getSession(userId);
+
+    if (!isConnected) {
+      if (currentMsgId) {
+        await ctx.editMessageText(
+          `🚀 *Bot Main Menu*\n\n` +
+          `⚠️ *WhatsApp Account Not Connected*\n` +
+          `Please connect your WhatsApp account to start checking.\n\n` +
+          `Tap the button below to connect your WhatsApp account:`,
+          {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard([[Markup.button.callback('🔗 Connect WhatsApp Account', 'MENU_CONNECT')]])
+          }
+        ).catch(async () => {
+          await sendMainMenu(ctx);
+        });
+      } else {
+        await sendMainMenu(ctx);
+      }
+      return;
+    }
+
+    const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
+    let numDisplay = '••••••••••';
+    if (cleanNum.length > 7) {
+      numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
+    } else if (cleanNum) {
+      numDisplay = `+${cleanNum.substring(0, 3)}****`;
+    }
+
+    if (currentMsgId) {
+      await ctx.editMessageText(
+        `🚀 *Bot Main Menu*\n\n` +
+        `🎉 *WhatsApp Account Connected & Active!*\n\n` +
+        `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
+        `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
+        `⚡ *WhatsApp Checking Engine:* Ready!\n` +
+        `Tap \`/check\` from the menu to start checking numbers!`,
+        {
+          parse_mode: 'Markdown',
+          ...getMainMenuKeyboard(true, false)
+        }
+      ).catch(async () => {
+        await sendMainMenu(ctx);
+      });
+    } else {
+      await sendMainMenu(ctx);
+    }
   });
 
   // Register modular handlers
