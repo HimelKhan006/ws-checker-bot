@@ -681,10 +681,7 @@ function createBot(token) {
 
     ctx.session.state = null;
 
-    // STEP 1: Send fresh Main Menu card FIRST (prevents 0-message gap)
-    await sendMainMenu(ctx);
-
-    // STEP 2: Delete current message (QR photo card / Pairing prompt) and all temp messages
+    // STEP 1: Delete current message (QR photo card / Pairing prompt) and all temp messages FIRST
     const idsToDelete = new Set();
     if (currentMsgId) idsToDelete.add(currentMsgId);
     if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
@@ -693,7 +690,10 @@ function createBot(token) {
     }
 
     const ids = [...idsToDelete];
-    Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
+    await Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
+
+    // STEP 2: Send fresh Main Menu card SECOND
+    await sendMainMenu(ctx);
   });
 
   // Register modular handlers
