@@ -302,6 +302,13 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
   // Auto-logout and purge any previous account session before updating pairing
   await sessionManager.disconnect(userId, true).catch(() => {});
 
+  // Auto-delete prompt card (Image 1) for a clean chat experience!
+  const promptIdToDelete = ctx.session.pairingPromptMsgId || ctx.message?.reply_to_message?.message_id;
+  if (promptIdToDelete) {
+    ctx.telegram.deleteMessage(ctx.chat.id, promptIdToDelete).catch(() => {});
+    ctx.session.pairingPromptMsgId = null;
+  }
+
   const statusMsg = await ctx.reply(
     `⌛ *Initializing Real WhatsApp Engine for \`+${cleanNum}\`...*\n\nPlease wait a few seconds while your pairing code is generated.`,
     { reply_to_message_id: ctx.message?.message_id, parse_mode: 'Markdown' }
