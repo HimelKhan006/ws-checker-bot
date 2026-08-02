@@ -37,13 +37,23 @@ if (!token || token === 'YOUR_TELEGRAM_BOT_TOKEN_HERE') {
 
     const bot = createBot(token);
 
-    // Verify Telegram Bot Token & Fetch Bot Info
+    // Verify Telegram Bot Token & Fetch Bot Info (Resilient Network Retry)
     let botUsername = 'Telegram Bot';
-    try {
-      const botInfo = await bot.telegram.getMe();
-      botUsername = botInfo?.username ? `@${botInfo.username}` : (botInfo?.first_name || 'Bot');
-    } catch (err) {
-      console.error('❌ Invalid Telegram BOT_TOKEN or network error:', err.message);
+    let verified = false;
+    for (let attempt = 1; attempt <= 10; attempt++) {
+      try {
+        const botInfo = await bot.telegram.getMe();
+        botUsername = botInfo?.username ? `@${botInfo.username}` : (botInfo?.first_name || 'Bot');
+        verified = true;
+        break;
+      } catch (err) {
+        console.error(`⚠️ Network/token check attempt ${attempt}/10 failed (${err.message}). Retrying in 3s...`);
+        await new Promise(res => setTimeout(res, 3000));
+      }
+    }
+
+    if (!verified) {
+      console.error('❌ Could not connect to Telegram API after 10 attempts. Check BOT_TOKEN and network connection.');
       process.exit(1);
     }
 
