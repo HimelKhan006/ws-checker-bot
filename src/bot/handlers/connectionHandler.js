@@ -150,7 +150,7 @@ function registerConnectionHandlers(bot) {
               numDisplay = `+${cleanNum.substring(0, 3)}****`;
             }
 
-            // Step 1: Send initial connection animation card
+            // Step 1: Send initial connection animation card (40%)
             const animMsg = await ctx.reply(
               `🔄 *Connecting WhatsApp Account...*\n\n` +
               `⏳ *Status:* Handshaking with WhatsApp servers...\n` +
@@ -166,22 +166,35 @@ function registerConnectionHandlers(bot) {
               Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
             }
 
-            // Step 3: Progress animation to 85%
-            await new Promise(r => setTimeout(r, 250));
+            // Step 3: Progress animation to 80%
+            await new Promise(r => setTimeout(r, 200));
             if (animMsg?.message_id) {
               await ctx.telegram.editMessageText(
                 ctx.chat.id, animMsg.message_id, null,
                 `🔄 *Connecting WhatsApp Account...*\n\n` +
                 `⚡ *Status:* Syncing profile & credentials...\n` +
-                `\`[▓▓▓▓▓▓▓▓░░] 85%\`\n\n` +
+                `\`[▓▓▓▓▓▓▓▓░░] 80%\`\n\n` +
                 `_Verifying account details..._`,
+                { parse_mode: 'Markdown' }
+              ).catch(() => {});
+            }
+
+            // Step 4: Progress animation to 100% COMPLETE!
+            await new Promise(r => setTimeout(r, 250));
+            if (animMsg?.message_id) {
+              await ctx.telegram.editMessageText(
+                ctx.chat.id, animMsg.message_id, null,
+                `🔄 *Connecting WhatsApp Account...*\n\n` +
+                `✅ *Status:* Connection 100% Complete!\n` +
+                `\`[▓▓▓▓▓▓▓▓▓▓] 100%\`\n\n` +
+                `_Loading connected profile..._`,
                 { parse_mode: 'Markdown' }
               ).catch(() => {});
             }
 
             await new Promise(r => setTimeout(r, 300));
 
-            // Step 4: Final Connected Confirmation Card!
+            // Step 5: Final Connected Confirmation Profile Card!
             const finalCardText =
               `🎉 *WhatsApp Account Connected Successfully!*\n\n` +
               `👤 *Account Name:* \`${pushName}\`\n` +
@@ -503,7 +516,7 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
             numDisplay = `+${cleanNum.substring(0, 3)}****`;
           }
 
-          // Step 1: Send initial connection animation card
+          // Step 1: Send initial connection animation card (40%)
           const animMsg = await ctx.reply(
             `🔄 *Connecting WhatsApp Account...*\n\n` +
             `⏳ *Status:* Handshaking with WhatsApp servers...\n` +
@@ -519,22 +532,35 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
             Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
           }
 
-          // Step 3: Progress animation to 85%
-          await new Promise(r => setTimeout(r, 250));
+          // Step 3: Progress animation to 80%
+          await new Promise(r => setTimeout(r, 200));
           if (animMsg?.message_id) {
             await ctx.telegram.editMessageText(
               ctx.chat.id, animMsg.message_id, null,
               `🔄 *Connecting WhatsApp Account...*\n\n` +
               `⚡ *Status:* Syncing profile & credentials...\n` +
-              `\`[▓▓▓▓▓▓▓▓░░] 85%\`\n\n` +
+              `\`[▓▓▓▓▓▓▓▓░░] 80%\`\n\n` +
               `_Verifying account details..._`,
+              { parse_mode: 'Markdown' }
+            ).catch(() => {});
+          }
+
+          // Step 4: Progress animation to 100% COMPLETE!
+          await new Promise(r => setTimeout(r, 250));
+          if (animMsg?.message_id) {
+            await ctx.telegram.editMessageText(
+              ctx.chat.id, animMsg.message_id, null,
+              `🔄 *Connecting WhatsApp Account...*\n\n` +
+              `✅ *Status:* Connection 100% Complete!\n` +
+              `\`[▓▓▓▓▓▓▓▓▓▓] 100%\`\n\n` +
+              `_Loading connected profile..._`,
               { parse_mode: 'Markdown' }
             ).catch(() => {});
           }
 
           await new Promise(r => setTimeout(r, 300));
 
-          // Step 4: Final Connected Confirmation Card!
+          // Step 5: Final Connected Confirmation Profile Card!
           const finalCardText =
             `🎉 *WhatsApp Account Connected Successfully!*\n\n` +
             `👤 *Account Name:* \`${pushName}\`\n` +
