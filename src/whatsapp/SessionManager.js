@@ -65,12 +65,15 @@ class SessionManager {
     // End old socket cleanly if active
     if (this.sessions.has(uid)) {
       const oldSession = this.sessions.get(uid);
-      if (oldSession && oldSession.sock) {
-        try {
-          oldSession.sock.ev.removeAllListeners('connection.update');
-          oldSession.sock.ev.removeAllListeners('creds.update');
-          oldSession.sock.end();
-        } catch (e) {}
+      if (oldSession) {
+        oldSession.callbacks = {}; // Suppress unwanted disconnect notifications during session reset
+        if (oldSession.sock) {
+          try {
+            oldSession.sock.ev.removeAllListeners('connection.update');
+            oldSession.sock.ev.removeAllListeners('creds.update');
+            oldSession.sock.end();
+          } catch (e) {}
+        }
       }
       this.sessions.delete(uid);
     }
@@ -231,15 +234,18 @@ class SessionManager {
     const uid = String(userId);
     const session = this.sessions.get(uid);
 
-    if (session && session.sock) {
-      try {
-        session.sock.ev.removeAllListeners('connection.update');
-        session.sock.ev.removeAllListeners('creds.update');
+    if (session) {
+      session.callbacks = {}; // Suppress unwanted disconnect notifications during manual disconnect
+      if (session.sock) {
         try {
-          await session.sock.logout();
+          session.sock.ev.removeAllListeners('connection.update');
+          session.sock.ev.removeAllListeners('creds.update');
+          try {
+            await session.sock.logout();
+          } catch (e) {}
+          session.sock.end();
         } catch (e) {}
-        session.sock.end();
-      } catch (e) {}
+      }
     }
 
     this.sessions.delete(uid);
