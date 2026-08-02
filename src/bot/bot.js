@@ -676,7 +676,7 @@ function createBot(token) {
   });
 
 
-  // Cancel action — In-place transition back to Main Menu (Prevents Telegram 'START' button popup)
+  // Cancel action — Cleanly remove QR photo/Pairing cards and return to Main Menu
   bot.action('CANCEL_ACTION', async (ctx) => {
     await ctx.answerCbQuery().catch(() => { });
     const userId = ctx.from.id;
@@ -698,63 +698,19 @@ function createBot(token) {
 
     ctx.session.state = null;
 
-    // Delete all OTHER temp messages (e.g. QR photo cards), but keep current message to edit in-place
+    // STEP 1: Send fresh Main Menu card FIRST (prevents 0-message gap)
+    await sendMainMenu(ctx);
+
+    // STEP 2: Delete current message (QR photo card / Pairing prompt) and all temp messages
+    const idsToDelete = new Set();
+    if (currentMsgId) idsToDelete.add(currentMsgId);
     if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
-      const ids = ctx.session.tempMsgIds.filter(id => id !== currentMsgId);
+      ctx.session.tempMsgIds.forEach(id => idsToDelete.add(id));
       ctx.session.tempMsgIds = [];
-      Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => { });
     }
 
-    // Render Main Menu card in-place on current message (No message gap, No 'START' button!)
-    const isConnected = sessionManager.isConnected(userId);
-    const session = sessionManager.getSession(userId);
-
-    if (!isConnected) {
-      if (currentMsgId) {
-        await ctx.editMessageText(
-          `🚀 *Bot Main Menu*\n\n` +
-          `⚠️ *WhatsApp Account Not Connected*\n` +
-          `Please connect your WhatsApp account to start checking.\n\n` +
-          `Tap the button below to connect your WhatsApp account:`,
-          {
-            parse_mode: 'Markdown',
-            ...Markup.inlineKeyboard([[Markup.button.callback('🔗 Connect WhatsApp Account', 'MENU_CONNECT')]])
-          }
-        ).catch(async () => {
-          await sendMainMenu(ctx);
-        });
-      } else {
-        await sendMainMenu(ctx);
-      }
-      return;
-    }
-
-    const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
-    let numDisplay = '••••••••••';
-    if (cleanNum.length > 7) {
-      numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
-    } else if (cleanNum) {
-      numDisplay = `+${cleanNum.substring(0, 3)}****`;
-    }
-
-    if (currentMsgId) {
-      await ctx.editMessageText(
-        `🚀 *Bot Main Menu*\n\n` +
-        `🎉 *WhatsApp Account Connected & Active!*\n\n` +
-        `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
-        `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
-        `⚡ *WhatsApp Checking Engine:* Ready!\n` +
-        `Tap \`/check\` from the menu to start checking numbers!`,
-        {
-          parse_mode: 'Markdown',
-          ...getMainMenuKeyboard(true, false)
-        }
-      ).catch(async () => {
-        await sendMainMenu(ctx);
-      });
-    } else {
-      await sendMainMenu(ctx);
-    }
+    const ids = [...idsToDelete];
+    Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
   });
 
   // Register modular handlers
