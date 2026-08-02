@@ -211,10 +211,20 @@ function registerAdminHandlers(bot) {
           [
             Markup.button.callback('📜 View Banned Users List', 'ADMIN_BAN_LIST'),
             Markup.button.callback('👥 View All Users List', 'ADMIN_USER_LIST')
+          ],
+          [
+            Markup.button.callback('🔒 Close Admin Panel', 'ADMIN_CLOSE_PANEL')
           ]
         ])
       }
     );
+  });
+
+  // Close / delete the admin panel message
+  bot.action('ADMIN_CLOSE_PANEL', async (ctx) => {
+    if (!checkAdmin(ctx)) return;
+    await ctx.answerCbQuery('✅ Admin Panel closed.').catch(() => {});
+    await ctx.deleteMessage().catch(() => {});
   });
 
   // /admin Command - Comprehensive Admin & Bot Control Dashboard
@@ -278,6 +288,9 @@ function registerAdminHandlers(bot) {
           [
             Markup.button.callback('📜 View Banned Users List', 'ADMIN_BAN_LIST'),
             Markup.button.callback('👥 View All Users List', 'ADMIN_USER_LIST')
+          ],
+          [
+            Markup.button.callback('🔒 Close Admin Panel', 'ADMIN_CLOSE_PANEL')
           ]
         ])
       }
