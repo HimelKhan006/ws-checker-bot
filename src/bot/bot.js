@@ -42,7 +42,7 @@ function createBot(token) {
   const visitedUsers = new Set();
   const userSessions = new Map();
 
-  // Purge old command cache & set complete commands list (including /admin & /clear)
+  // 1. Set Default Slash Commands for Regular Users (NO /admin)
   bot.telegram.deleteMyCommands().then(() => {
     return bot.telegram.setMyCommands([
       { command: 'start', description: '🚀 Start' },
@@ -50,12 +50,25 @@ function createBot(token) {
       { command: 'check', description: '🔍 Start Checking' },
       { command: 'profile', description: '👤 Profile' },
       { command: 'leaderboard', description: '🏆 Top Referrers' },
-      { command: 'admin', description: '⚙️ Admin Panel' },
       { command: 'guide', description: '📖 Guide' },
       { command: 'clear', description: '🧹 Clear Chat History' }
     ]);
   }).then(() => {
-    console.log('✅ Telegram Slash Commands Menu updated with /admin and /clear!');
+    // 2. Set Admin-only Commands Scope (Includes /admin ONLY for Admin chat IDs)
+    const adminIds = db.getAdminIds();
+    adminIds.forEach((adminId) => {
+      bot.telegram.setMyCommands([
+        { command: 'start', description: '🚀 Start' },
+        { command: 'menu', description: '🏠 Main Menu' },
+        { command: 'check', description: '🔍 Start Checking' },
+        { command: 'profile', description: '👤 Profile' },
+        { command: 'leaderboard', description: '🏆 Top Referrers' },
+        { command: 'admin', description: '⚙️ Admin Panel' },
+        { command: 'guide', description: '📖 Guide' },
+        { command: 'clear', description: '🧹 Clear Chat History' }
+      ], { scope: { type: 'chat', chat_id: Number(adminId) } }).catch(() => {});
+    });
+    console.log('✅ Registered Telegram Bot Commands (Default & Admin Scopes)');
   }).catch((err) => {
     console.error('⚠️ Could not update bot commands:', err.message);
   });
@@ -80,7 +93,7 @@ function createBot(token) {
         return ctx.reply(`🔴 *Account Banned*\n\nYour account has been banned by the Administrator. Access restricted.`, { parse_mode: 'Markdown' });
       }
 
-      // Dynamic Slash Command Menu for Admin users
+      // Dynamic Slash Command Menu for Admin users (Includes /admin and /clear)
       if (db.isAdmin(userId) && !ctx.session.adminMenuSet) {
         ctx.session.adminMenuSet = true;
         bot.telegram.setMyCommands([
@@ -89,8 +102,9 @@ function createBot(token) {
           { command: 'check', description: '🔍 Start Checking' },
           { command: 'profile', description: '👤 Profile' },
           { command: 'leaderboard', description: '🏆 Top Referrers' },
-          { command: 'admin', description: '⚙️ Admin' },
-          { command: 'guide', description: '📖 Guide' }
+          { command: 'admin', description: '⚙️ Admin Panel' },
+          { command: 'guide', description: '📖 Guide' },
+          { command: 'clear', description: '🧹 Clear Chat History' }
         ], { scope: { type: 'chat', chat_id: userId } }).catch(() => { });
       }
 
@@ -362,26 +376,20 @@ function createBot(token) {
     const statusMsg = await ctx.reply('🧹 Clearing chat history...').catch(() => null);
     const statusMsgId = statusMsg?.message_id || 0;
 
-    // Step 4: Build full list of IDs to delete (tracked + full backwards sweep)
-    //         Exclude the statusMsgId so we can edit it into the fresh menu
+    // Step 4: Build set of IDs to delete (tracked + fast 150-message sweep)
     const idsToDelete = new Set();
     if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
       ctx.session.tempMsgIds.forEach(id => idsToDelete.add(id));
       ctx.session.tempMsgIds = [];
     }
-    // Sweep 500 IDs back from the /clear command message (covers full history)
-    for (let id = cmdMsgId - 1; id >= Math.max(1, cmdMsgId - 500); id--) {
-      if (id !== statusMsgId) idsToDelete.add(id); // never delete our status anchor
+    // Fast 150-message sweep backwards from /clear command
+    for (let id = cmdMsgId - 1; id >= Math.max(1, cmdMsgId - 150); id--) {
+      if (id !== statusMsgId) idsToDelete.add(id);
     }
 
-    // Step 5: Delete all in parallel batches of 25 (Telegram rate limit safe)
+    // Step 5: Instant parallel deletion
     const ids = [...idsToDelete];
-    const batchSize = 25;
-    for (let i = 0; i < ids.length; i += batchSize) {
-      const batch = ids.slice(i, i + batchSize);
-      await Promise.allSettled(batch.map(mId => ctx.telegram.deleteMessage(chatId, mId)));
-      if (i + batchSize < ids.length) await new Promise(r => setTimeout(r, 80));
-    }
+    await Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(chatId, mId)));
 
     // Step 6: Edit the status message in-place into the fresh clean menu
     //         This gives exactly ONE final message with NO flicker/double
