@@ -339,39 +339,84 @@ function createBot(token) {
     return sendMainMenu(ctx, '🏠 *Main Menu*');
   });
 
-  // /clear command — wipes all bot chat history and sends a fresh start
+  // /clear command — professional full chat history wipe
   bot.command('clear', async (ctx) => {
     const chatId = ctx.chat.id;
-    const currentMsgId = ctx.message?.message_id || 0;
+    const cmdMsgId = ctx.message?.message_id || 0;
 
-    // Stop any active timers
+    // Step 1: Immediately delete the /clear command message itself
+    ctx.telegram.deleteMessage(chatId, cmdMsgId).catch(() => {});
+
+    // Step 2: Stop all active session timers & reset state
     if (ctx.session.pairingTimer) { clearInterval(ctx.session.pairingTimer); ctx.session.pairingTimer = null; }
     if (ctx.session.qrTimer) { clearTimeout(ctx.session.qrTimer); ctx.session.qrTimer = null; }
     ctx.session.state = null;
     ctx.session.pairingPromptMsgId = null;
 
-    // Build full set of IDs to delete (tracked + full sweep)
+    // Step 3: Send ONE "clearing..." status message (this becomes our anchor)
+    const statusMsg = await ctx.reply('🧹 Clearing chat history...').catch(() => null);
+    const statusMsgId = statusMsg?.message_id || 0;
+
+    // Step 4: Build full list of IDs to delete (tracked + full backwards sweep)
+    //         Exclude the statusMsgId so we can edit it into the fresh menu
     const idsToDelete = new Set();
     if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
       ctx.session.tempMsgIds.forEach(id => idsToDelete.add(id));
       ctx.session.tempMsgIds = [];
     }
-    // Sweep 500 message IDs backwards — covers entire bot conversation history
-    for (let id = currentMsgId; id >= Math.max(1, currentMsgId - 500); id--) {
-      idsToDelete.add(id);
+    // Sweep 500 IDs back from the /clear command message (covers full history)
+    for (let id = cmdMsgId - 1; id >= Math.max(1, cmdMsgId - 500); id--) {
+      if (id !== statusMsgId) idsToDelete.add(id); // never delete our status anchor
     }
 
-    // Delete in batches of 25 (respects Telegram rate limits)
+    // Step 5: Delete all in parallel batches of 25 (Telegram rate limit safe)
     const ids = [...idsToDelete];
     const batchSize = 25;
     for (let i = 0; i < ids.length; i += batchSize) {
       const batch = ids.slice(i, i + batchSize);
       await Promise.allSettled(batch.map(mId => ctx.telegram.deleteMessage(chatId, mId)));
-      if (i + batchSize < ids.length) await new Promise(r => setTimeout(r, 100));
+      if (i + batchSize < ids.length) await new Promise(r => setTimeout(r, 80));
     }
 
-    // Fresh start
-    return sendMainMenu(ctx, '✨ *Chat Cleared! Fresh Start.*');
+    // Step 6: Edit the status message in-place into the fresh clean menu
+    //         This gives exactly ONE final message with NO flicker/double
+    const userId = ctx.from.id;
+    const isConnected = sessionManager.isConnected(userId);
+    const session = sessionManager.getSession(userId);
+
+    if (!isConnected) {
+      await ctx.telegram.editMessageText(
+        chatId, statusMsgId, null,
+        `✨ *Chat Cleared!*\n\n⚠️ *WhatsApp Account Not Connected*\nPlease connect to start checking.\n\nTap the button below:`,
+        {
+          parse_mode: 'Markdown',
+          ...Markup.inlineKeyboard([[Markup.button.callback('🔗 Connect WhatsApp Account', 'MENU_CONNECT')]])
+        }
+      ).catch(() => ctx.reply('✨ Chat cleared! Type /menu for main menu.'));
+      return;
+    }
+
+    const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
+    let numDisplay = '••••••••••';
+    if (cleanNum.length > 7) {
+      numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
+    } else if (cleanNum) {
+      numDisplay = `+${cleanNum.substring(0, 3)}****`;
+    }
+
+    await ctx.telegram.editMessageText(
+      chatId, statusMsgId, null,
+      `✨ *Chat Cleared! Fresh Start.*\n\n` +
+      `🎉 *WhatsApp Account Connected & Active!*\n\n` +
+      `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
+      `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
+      `⚡ *WhatsApp Checking Engine:* Ready!\n` +
+      `Tap \`/check\` from the menu to start checking numbers!`,
+      {
+        parse_mode: 'Markdown',
+        ...getMainMenuKeyboard(true, false)
+      }
+    ).catch(() => ctx.reply('✨ Chat cleared! Type /menu for main menu.'));
   });
 
   // /guide command
