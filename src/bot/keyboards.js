@@ -9,8 +9,7 @@ function getRemoveKeyboard() {
 
 /**
  * Main Menu Inline Keyboard
- * - Logout button only on Profile
- * - Clear Chat button at bottom
+ * - Logout only on Profile
  */
 function getMainMenuKeyboard(isConnected, isRevealed = false) {
   const keyboard = [];
@@ -32,15 +31,11 @@ function getMainMenuKeyboard(isConnected, isRevealed = false) {
     ]);
   }
 
-  keyboard.push([
-    Markup.button.callback('🧹 Clear Chat', 'CLEAR_CHAT')
-  ]);
-
   return Markup.inlineKeyboard(keyboard);
 }
 
 /**
- * Profile Card Keyboard — Logout ONLY here, NO Clear Chat
+ * Profile Card Keyboard — Logout ONLY here
  */
 function getProfileKeyboard(isConnected, isRevealed = false) {
   const keyboard = [];
@@ -90,9 +85,6 @@ function getConnectionMethodKeyboard() {
     [
       Markup.button.callback('🔢 Connect via Pairing Code', 'CONNECT_PAIRING'),
       Markup.button.callback('📷 Connect via QR Code', 'CONNECT_QR')
-    ],
-    [
-      Markup.button.callback('🧹 Clear Chat', 'CLEAR_CHAT')
     ]
   ]);
 }
@@ -109,9 +101,6 @@ function getReportKeyboard() {
     [
       Markup.button.callback('❌ Download Registered.csv', 'DL_REGISTERED_CSV'),
       Markup.button.callback('✅ Download Unregistered.csv', 'DL_UNREGISTERED_CSV')
-    ],
-    [
-      Markup.button.callback('🧹 Clear Chat', 'CLEAR_CHAT')
     ]
   ]);
 }
