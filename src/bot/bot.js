@@ -259,9 +259,11 @@ function createBot(token) {
       `2️⃣ *Checking WhatsApp Numbers:* \n` +
       `• Tap \`/check\` to start checking numbers.\n\n`;
 
-    let header = `👋 *Welcome to WhatsApp Checker Bot, ${userName}!*\n\n` + guideText;
+    let header = `🚀 *Bot Main Menu*\n\n`;
     if (customTitle) {
       header = `${customTitle}\n\n`;
+    } else if (isNewUser) {
+      header = `👋 *Welcome to WhatsApp Checker Bot, ${userName}!*\n\n` + guideText;
     }
 
     // If NOT connected, show clean guide with a single Connect button
@@ -407,8 +409,7 @@ function createBot(token) {
     if (!isConnected) {
       await ctx.telegram.editMessageText(
         chatId, statusMsgId, null,
-        `👋 *Welcome to WhatsApp Checker Bot, ${userName}!*\n\n` +
-        guideText +
+        `🚀 *Bot Main Menu*\n\n` +
         `⚠️ *WhatsApp Account Not Connected*\n` +
         `Please connect your WhatsApp account to start checking.\n\n` +
         `Tap the button below to connect your WhatsApp account:`,
@@ -430,7 +431,7 @@ function createBot(token) {
 
     await ctx.telegram.editMessageText(
       chatId, statusMsgId, null,
-      `👋 *Welcome to WhatsApp Checker Bot, ${userName}!*\n\n` +
+      `🚀 *Bot Main Menu*\n\n` +
       `🎉 *WhatsApp Account Connected & Active!*\n\n` +
       `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
       `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
