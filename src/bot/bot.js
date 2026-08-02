@@ -43,34 +43,17 @@ function createBot(token) {
   const visitedUsers = new Set();
   const userSessions = new Map();
 
-  // 1. Set Default Slash Commands for Regular Users (NO /admin)
-  bot.telegram.deleteMyCommands().then(() => {
-    return bot.telegram.setMyCommands([
+  // Set Default Slash Commands in background (Non-blocking)
+  setTimeout(() => {
+    bot.telegram.setMyCommands([
       { command: 'start', description: '🚀 Start' },
       { command: 'menu', description: '🏠 Main Menu' },
       { command: 'check', description: '🔍 Start Checking' },
       { command: 'profile', description: '👤 Profile' },
       { command: 'leaderboard', description: '🏆 Top Referrers' },
       { command: 'guide', description: '📖 Guide' }
-    ]);
-  }).then(() => {
-    // 2. Set Admin-only Commands Scope (Includes /admin ONLY for Admin chat IDs)
-    const adminIds = db.getAdminIds();
-    adminIds.forEach((adminId) => {
-      bot.telegram.setMyCommands([
-        { command: 'start', description: '🚀 Start' },
-        { command: 'menu', description: '🏠 Main Menu' },
-        { command: 'check', description: '🔍 Start Checking' },
-        { command: 'profile', description: '👤 Profile' },
-        { command: 'leaderboard', description: '🏆 Top Referrers' },
-        { command: 'admin', description: '⚙️ Admin Panel' },
-        { command: 'guide', description: '📖 Guide' }
-      ], { scope: { type: 'chat', chat_id: Number(adminId) } }).catch(() => {});
-    });
-    console.log('✅ Registered Telegram Bot Commands (Default & Admin Scopes)');
-  }).catch((err) => {
-    console.error('⚠️ Could not update bot commands:', err.message);
-  });
+    ]).catch(() => {});
+  }, 2000);
 
   // Persistent Session Middleware per user (Multi-User Concurrent Isolation)
   bot.use(async (ctx, next) => {
