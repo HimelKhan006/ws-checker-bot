@@ -243,6 +243,29 @@ function getSystemDiagnostics() {
   };
 }
 
+const protectedFilePath = path.join(dataDir, 'protected.json');
+let protectedMsgs = loadJSON(protectedFilePath, {});
+
+function protectMessage(chatId, messageId) {
+  if (!chatId || !messageId) return;
+  const key = `${chatId}_${messageId}`;
+  protectedMsgs[key] = true;
+  saveJSON(protectedFilePath, protectedMsgs);
+}
+
+function unprotectMessage(chatId, messageId) {
+  if (!chatId || !messageId) return;
+  const key = `${chatId}_${messageId}`;
+  delete protectedMsgs[key];
+  saveJSON(protectedFilePath, protectedMsgs);
+}
+
+function isMessageProtected(chatId, messageId) {
+  if (!chatId || !messageId) return false;
+  const key = `${chatId}_${messageId}`;
+  return !!protectedMsgs[key];
+}
+
 module.exports = {
   isAdmin,
   isBanned,
@@ -261,5 +284,8 @@ module.exports = {
   getUserRankAndStats,
   initCloudSync,
   logSystemError,
-  getSystemDiagnostics
+  getSystemDiagnostics,
+  protectMessage,
+  unprotectMessage,
+  isMessageProtected
 };

@@ -391,7 +391,7 @@ function createBot(token) {
     }
 
     for (let id = cmdMsgId - 1; id >= Math.max(1, cmdMsgId - 150); id--) {
-      if (id !== statusMsgId) idsToDelete.add(id);
+      if (id !== statusMsgId && !db.isMessageProtected(chatId, id)) idsToDelete.add(id);
     }
 
     // Step 3: Animate progress bar to 55%
@@ -819,7 +819,7 @@ function createBot(token) {
     }
 
     for (let id = statusMsgId - 1; id >= Math.max(1, statusMsgId - 150); id--) {
-      if (id !== statusMsgId) idsToDelete.add(id);
+      if (id !== statusMsgId && !db.isMessageProtected(chatId, id)) idsToDelete.add(id);
     }
 
     // Animate to 55%

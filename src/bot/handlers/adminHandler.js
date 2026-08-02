@@ -28,6 +28,7 @@ const executeBroadcast = async (bot, ctx, text) => {
         { parse_mode: 'Markdown' }
       );
       if (sentMsg && sentMsg.message_id) {
+        db.protectMessage(u.userId, sentMsg.message_id);
         deliveryLogs.push({
           chatId: u.userId,
           messageId: sentMsg.message_id,
@@ -90,6 +91,9 @@ const executeDirectMessage = async (bot, ctx, targetUserId, messageText) => {
     );
 
     const msgId = sentMsg.message_id;
+    if (msgId) {
+      db.protectMessage(targetUserId, msgId);
+    }
     return ctx.reply(
       `💬 *Direct Message Delivery Log*\n\n` +
       `✅ *Status:* Delivered Successfully!\n` +
