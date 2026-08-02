@@ -308,8 +308,9 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
     return;
   }
 
+  // Auto-delete user's submitted phone number message immediately for maximum user privacy & safety!
   if (ctx.message?.message_id) {
-    ctx.session.tempMsgIds.push(ctx.message.message_id);
+    ctx.deleteMessage(ctx.message.message_id).catch(() => {});
   }
 
   const cleanNum = cleanPhoneNumber(text);
@@ -317,7 +318,7 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
   if (!cleanNum) {
     const errPrompt = await ctx.reply(
       `❌ *Invalid Phone Number Format*\n\nPlease provide a valid phone number with country code.\n*Example:* \`8801700000000\``,
-      { reply_to_message_id: ctx.message?.message_id, parse_mode: 'Markdown', ...getCancelKeyboard() }
+      { parse_mode: 'Markdown', ...getCancelKeyboard() }
     );
     if (errPrompt && errPrompt.message_id) ctx.session.tempMsgIds.push(errPrompt.message_id);
     return;
@@ -329,20 +330,24 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
   // Auto-logout and purge any previous account session before updating pairing
   await sessionManager.disconnect(userId, true).catch(() => {});
 
+  const maskedNum = cleanNum.length > 7
+    ? `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`
+    : `+${cleanNum.substring(0, 3)}****`;
+
   let statusMsg = null;
   if (targetMsgId) {
     await ctx.telegram.editMessageText(
       ctx.chat.id,
       targetMsgId,
       null,
-      `⌛ *Generating new pairing code for \`+${cleanNum}\`...*`,
+      `⌛ *Generating new pairing code for \`${maskedNum}\`...*`,
       { parse_mode: 'Markdown' }
     ).catch(() => {});
     statusMsg = { message_id: targetMsgId };
   } else {
     statusMsg = await ctx.reply(
-      `⌛ *Initializing Real WhatsApp Engine for \`+${cleanNum}\`...*\n\nPlease wait a few seconds while your pairing code is generated.`,
-      { reply_to_message_id: ctx.message?.message_id, parse_mode: 'Markdown' }
+      `⌛ *Initializing Real WhatsApp Engine for \`${maskedNum}\`...*\n\nPlease wait a few seconds while your pairing code is generated.`,
+      { parse_mode: 'Markdown' }
     );
     if (statusMsg && statusMsg.message_id) {
       ctx.session.tempMsgIds.push(statusMsg.message_id);

@@ -15,6 +15,20 @@ class SessionManager {
     this.sessions = new Map(); // userId -> { sock, state, userJid, pushName, method, pairingCode, isSocketReady, callbacks }
     this.sessionDir = path.join(__dirname, '..', '..', 'whatsapp_sessions');
     this.ensureSessionDir();
+    this.startKeepAlivePingLoop();
+  }
+
+  startKeepAlivePingLoop() {
+    // Periodically ping WhatsApp servers every 3 minutes to prevent 4-day session logouts
+    setInterval(() => {
+      this.sessions.forEach((session) => {
+        if (session && session.sock && session.state === 'CONNECTED') {
+          try {
+            session.sock.sendPresenceUpdate('available').catch(() => {});
+          } catch (e) {}
+        }
+      });
+    }, 180000); // 3 minutes
   }
 
   ensureSessionDir() {
@@ -87,7 +101,12 @@ class SessionManager {
       browser: ['Windows', 'Chrome', '10.0.0'],
       syncFullHistory: false,
       generateHighQualityLinkPreview: false,
-      markOnlineOnConnect: true
+      markOnlineOnConnect: true,
+      keepAliveIntervalMs: 25000,
+      connectTimeoutMs: 60000,
+      defaultQueryTimeoutMs: 60000,
+      retryRequestDelayMs: 2000,
+      maxMsgRetryCount: 5
     });
 
     const sessionData = {
