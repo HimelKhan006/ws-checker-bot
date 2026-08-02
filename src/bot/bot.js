@@ -306,8 +306,13 @@ function createBot(token) {
     );
   };
 
-  // /start command
+  // /start command (Handles both bot.start and /start slash command)
   bot.start(async (ctx) => {
+    const payload = ctx.startPayload || (ctx.message?.text ? ctx.message.text.split(' ')[1] : null);
+    return sendMainMenu(ctx, null, payload);
+  });
+
+  bot.command('start', async (ctx) => {
     const payload = ctx.startPayload || (ctx.message?.text ? ctx.message.text.split(' ')[1] : null);
     return sendMainMenu(ctx, null, payload);
   });
@@ -724,7 +729,7 @@ function createBot(token) {
 
     // Ignore commands starting with '/' so command handlers process them exclusively
     if (text.startsWith('/')) {
-      return;
+      return next();
     }
 
     const userId = ctx.from.id;
