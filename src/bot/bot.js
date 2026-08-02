@@ -319,7 +319,6 @@ function createBot(token) {
 
     return ctx.reply(connectedText, connectedOptions).catch(() => {});
   };
-  };
 
   // /start command (Handles both bot.start and /start slash command)
   bot.start(async (ctx) => {
