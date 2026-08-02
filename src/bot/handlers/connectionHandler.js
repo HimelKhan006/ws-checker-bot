@@ -270,10 +270,16 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
 
   ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
 
-  // Enforce Reply to Prompt Message if brand new input
-  if (ctx.message && !ctx.message.reply_to_message) {
+  // Enforce Reply directly to Pairing Prompt Message
+  const replyMsg = ctx.message?.reply_to_message;
+  const isPairingPrompt = replyMsg && (
+    (ctx.session.tempMsgIds && ctx.session.tempMsgIds.includes(replyMsg.message_id)) ||
+    /Pairing Code|Connect WhatsApp|phone number|Connect via Pairing|WhatsApp Account Not Connected/i.test(replyMsg.text || replyMsg.caption || '')
+  );
+
+  if (ctx.message && !isPairingPrompt) {
     const warningMsg = await ctx.reply(
-      `⚠️ *Reply Required*\n\nPlease tap/swipe and **Reply** directly to the *Connect via Pairing Code* message to submit your phone number!`,
+      `⚠️ *Reply Required*\n\nPlease tap/swipe and **Reply** directly to the *Connect via Pairing Code* prompt message to submit your phone number!`,
       { reply_to_message_id: ctx.message.message_id, parse_mode: 'Markdown' }
     );
     ctx.session.tempMsgIds.push(ctx.message.message_id);
@@ -317,7 +323,7 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
   } else {
     statusMsg = await ctx.reply(
       `⌛ *Initializing Real WhatsApp Engine for \`+${cleanNum}\`...*\n\nPlease wait a few seconds while your pairing code is generated.`,
-      { parse_mode: 'Markdown' }
+      { reply_to_message_id: ctx.message?.message_id, parse_mode: 'Markdown' }
     );
     if (statusMsg && statusMsg.message_id) {
       ctx.session.tempMsgIds.push(statusMsg.message_id);

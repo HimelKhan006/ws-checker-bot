@@ -715,9 +715,18 @@ function createBot(token) {
       }
     }
 
-    // If NOT connected
-    if (state === 'AWAITING_PAIRING_NUMBER' || !state) {
-      return handlePairingPhoneNumberInput(ctx);
+    // If NOT connected, ONLY process pairing if state is AWAITING_PAIRING_NUMBER or replying to pairing prompt
+    if (!isConnected) {
+      const replyMsg = ctx.message?.reply_to_message;
+      const isReplyingToPairingMsg = replyMsg && (
+        (ctx.session.tempMsgIds && ctx.session.tempMsgIds.includes(replyMsg.message_id)) ||
+        /Pairing Code|Connect WhatsApp|phone number|Connect via Pairing|WhatsApp Account Not Connected/i.test(replyMsg.text || '')
+      );
+
+      if (state === 'AWAITING_PAIRING_NUMBER' || isReplyingToPairingMsg) {
+        return handlePairingPhoneNumberInput(ctx);
+      }
+      return sendMainMenu(ctx);
     }
 
     return next();
