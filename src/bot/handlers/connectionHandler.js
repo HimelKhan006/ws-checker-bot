@@ -312,23 +312,19 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
   // Auto-logout and purge any previous account session before updating pairing
   await sessionManager.disconnect(userId, true).catch(() => {});
 
-  const maskedNum = cleanNum.length > 7
-    ? `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`
-    : `+${cleanNum.substring(0, 3)}****`;
-
   let statusMsg = null;
   if (targetMsgId) {
     await ctx.telegram.editMessageText(
       ctx.chat.id,
       targetMsgId,
       null,
-      `⌛ *Generating new pairing code for \`${maskedNum}\`...*`,
+      `⌛ *Generating new pairing code for \`+${cleanNum}\`...*`,
       { parse_mode: 'Markdown' }
     ).catch(() => {});
     statusMsg = { message_id: targetMsgId };
   } else {
     statusMsg = await ctx.reply(
-      `⌛ *Initializing Real WhatsApp Engine for \`${maskedNum}\`...*\n\nPlease wait a few seconds while your pairing code is generated.`,
+      `⌛ *Initializing Real WhatsApp Engine for \`+${cleanNum}\`...*\n\nPlease wait a few seconds while your pairing code is generated.`,
       { reply_to_message_id: ctx.message?.message_id, parse_mode: 'Markdown' }
     );
     if (statusMsg && statusMsg.message_id) {
