@@ -10,19 +10,13 @@ function getRemoveKeyboard() {
 /**
  * Main Menu Inline Keyboard
  */
-function getMainMenuKeyboard(isConnected, isRevealed = false) {
+function getMainMenuKeyboard(isConnected) {
   const keyboard = [];
 
   if (isConnected) {
-    if (isRevealed) {
-      keyboard.push([
-        Markup.button.callback('🙈 Hide Phone Number (10s Timer)', 'HIDE_PHONE_NUMBER')
-      ]);
-    } else {
-      keyboard.push([
-        Markup.button.callback('👁️ Reveal Phone Number', 'REVEAL_PHONE_NUMBER')
-      ]);
-    }
+    keyboard.push([
+      Markup.button.callback('🚪 Logout WhatsApp Account', 'MENU_LOGOUT')
+    ]);
   } else {
     keyboard.push([
       Markup.button.callback('🔢 Connect via Pairing Code', 'CONNECT_PAIRING'),
@@ -34,22 +28,10 @@ function getMainMenuKeyboard(isConnected, isRevealed = false) {
 }
 
 /**
- * Profile Card Keyboard (Includes Leaderboard, Reveal/Hide Number, and Logout Button)
+ * Profile Card Keyboard (Includes Leaderboard and Logout Button)
  */
-function getProfileKeyboard(isConnected, isRevealed = false) {
+function getProfileKeyboard(isConnected) {
   const keyboard = [];
-
-  if (isConnected) {
-    if (isRevealed) {
-      keyboard.push([
-        Markup.button.callback('🙈 Hide Phone Number (10s Timer)', 'HIDE_PHONE_NUMBER')
-      ]);
-    } else {
-      keyboard.push([
-        Markup.button.callback('👁️ Reveal Phone Number', 'REVEAL_PHONE_NUMBER')
-      ]);
-    }
-  }
 
   keyboard.push([
     Markup.button.callback('🏆 View Referral Leaderboard', 'VIEW_LEADERBOARD')

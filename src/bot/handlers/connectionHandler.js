@@ -18,24 +18,19 @@ function registerConnectionHandlers(bot) {
     if (isConnected) {
       const session = sessionManager.getSession(userId);
       const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
-      let numDisplay = 'Connected';
-      if (cleanNum) {
-        if (cleanNum.length > 7) {
-          numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
-        } else {
-          numDisplay = `+${cleanNum.substring(0, 3)}****`;
-        }
-      }
+      const hiddenNumText = cleanNum
+        ? `<tg-spoiler><b>+${cleanNum}</b></tg-spoiler> (🙈 Tap to reveal)`
+        : '<tg-spoiler><b>Connected</b></tg-spoiler>';
 
       return ctx.editMessageText(
-        `🎉 *WhatsApp Account Already Connected!*\n\n` +
-        `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
-        `📱 *Connected Number:* \`${numDisplay}\`\n` +
-        `🟢 *Status:* Connected & Active\n\n` +
-        `⚡ *Engine Status:* Operational & Ready to Check!`,
+        `🎉 <b>WhatsApp Account Already Connected!</b>\n\n` +
+        `👤 <b>Account Name:</b> <code>${session?.pushName || 'WhatsApp Account'}</code>\n` +
+        `📱 <b>Connected Number:</b> ${hiddenNumText}\n` +
+        `🟢 <b>Status:</b> Connected & Active\n\n` +
+        `⚡ <b>Engine Status:</b> Operational & Ready to Check!`,
         {
-          parse_mode: 'Markdown',
-          ...getMainMenuKeyboard(true, false)
+          parse_mode: 'HTML',
+          ...getMainMenuKeyboard(true)
         }
       );
     }
@@ -146,24 +141,19 @@ function registerConnectionHandlers(bot) {
             ctx.session.tempMsgIds = [];
 
             const cleanNum = userJid ? userJid.split('@')[0].replace(/\D/g, '') : '';
-            let numDisplay = 'Connected';
-            if (cleanNum) {
-              if (cleanNum.length > 7) {
-                numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
-              } else {
-                numDisplay = `+${cleanNum.substring(0, 3)}****`;
-              }
-            }
+            const hiddenNumText = cleanNum
+              ? `<tg-spoiler><b>+${cleanNum}</b></tg-spoiler> (🙈 Tap to reveal)`
+              : '<tg-spoiler><b>Connected</b></tg-spoiler>';
 
             await ctx.reply(
-              `🎉 *WhatsApp Account Paired Successfully!*\n\n` +
-              `👤 *Account Name:* \`${pushName}\`\n` +
-              `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
-              `⚡ *Engine Status:* Active & Ready!\n` +
-              `Tap \`/check\` from the menu to start checking numbers!`,
+              `🎉 <b>WhatsApp Account Paired Successfully!</b>\n\n` +
+              `👤 <b>Account Name:</b> <code>${pushName}</code>\n` +
+              `📱 <b>Connected Number:</b> ${hiddenNumText}\n\n` +
+              `⚡ <b>Engine Status:</b> Active & Ready!\n` +
+              `Tap /check from the menu to start checking numbers!`,
               {
-                parse_mode: 'Markdown',
-                ...getMainMenuKeyboard(true, false)
+                parse_mode: 'HTML',
+                ...getMainMenuKeyboard(true)
               }
             );
           },
@@ -412,24 +402,19 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
           ctx.session.tempMsgIds = [];
 
           const cleanNum = userJid ? userJid.split('@')[0].replace(/\D/g, '') : '';
-          let numDisplay = 'Connected';
-          if (cleanNum) {
-            if (cleanNum.length > 7) {
-              numDisplay = `+${cleanNum.substring(0, 5)}${'*'.repeat(cleanNum.length - 8)}${cleanNum.substring(cleanNum.length - 3)}`;
-            } else {
-              numDisplay = `+${cleanNum.substring(0, 3)}****`;
-            }
-          }
+          const hiddenNumText = cleanNum
+            ? `<tg-spoiler><b>+${cleanNum}</b></tg-spoiler> (🙈 Tap to reveal)`
+            : '<tg-spoiler><b>Connected</b></tg-spoiler>';
 
           await ctx.reply(
-            `🎉 *WhatsApp Account Paired Successfully!*\n\n` +
-            `👤 *Account Name:* \`${pushName}\`\n` +
-            `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
-            `⚡ *Engine Status:* Active & Ready!\n` +
-            `Tap \`/check\` from the menu to start checking numbers!`,
+            `🎉 <b>WhatsApp Account Paired Successfully!</b>\n\n` +
+            `👤 <b>Account Name:</b> <code>${pushName}</code>\n` +
+            `📱 <b>Connected Number:</b> ${hiddenNumText}\n\n` +
+            `⚡ <b>Engine Status:</b> Active & Ready!\n` +
+            `Tap /check from the menu to start checking numbers!`,
             {
-              parse_mode: 'Markdown',
-              ...getMainMenuKeyboard(true, false)
+              parse_mode: 'HTML',
+              ...getMainMenuKeyboard(true)
             }
           );
         },
