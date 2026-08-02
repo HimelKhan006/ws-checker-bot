@@ -74,6 +74,7 @@ function registerConnectionHandlers(bot) {
     );
 
     if (msg && msg.message_id) {
+      ctx.session.pairingPromptMsgId = msg.message_id;
       ctx.session.tempMsgIds.push(msg.message_id);
     }
   });
@@ -301,16 +302,18 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
   // Auto-logout and purge any previous account session before updating pairing
   await sessionManager.disconnect(userId, true).catch(() => {});
 
+  const targetCardId = targetMsgId || ctx.message?.reply_to_message?.message_id || ctx.session.pairingPromptMsgId;
   let statusMsg = null;
-  if (targetMsgId) {
+
+  if (targetCardId) {
     await ctx.telegram.editMessageText(
       ctx.chat.id,
-      targetMsgId,
+      targetCardId,
       null,
-      `⌛ *Generating new pairing code for \`+${cleanNum}\`...*`,
+      `⌛ *Initializing Real WhatsApp Engine for \`+${cleanNum}\`...*\n\nPlease wait a few seconds while your pairing code is generated.`,
       { parse_mode: 'Markdown' }
     ).catch(() => {});
-    statusMsg = { message_id: targetMsgId };
+    statusMsg = { message_id: targetCardId };
   } else {
     statusMsg = await ctx.reply(
       `⌛ *Initializing Real WhatsApp Engine for \`+${cleanNum}\`...*\n\nPlease wait a few seconds while your pairing code is generated.`,
