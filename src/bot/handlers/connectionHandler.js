@@ -135,16 +135,18 @@ function registerConnectionHandlers(bot) {
             ctx.session.tempMsgIds = [];
 
             const cleanNum = userJid ? userJid.split('@')[0].replace(/\D/g, '') : '';
-            const hiddenNumText = cleanNum ? `||+${cleanNum}|| (🙈 Tap to reveal)` : '||Connected||';
+            const hiddenNumText = cleanNum
+              ? `<tg-spoiler><b>+${cleanNum}</b></tg-spoiler> (🙈 Tap to reveal)`
+              : '<tg-spoiler><b>Connected</b></tg-spoiler>';
 
             await ctx.reply(
-              `🎉 *WhatsApp Account Paired Successfully!*\n\n` +
-              `👤 *Account Name:* \`${pushName}\`\n` +
-              `📱 *Connected Number:* ${hiddenNumText}\n\n` +
-              `⚡ *Engine Status:* Active & Ready!\n` +
-              `Tap \`/check\` from the menu to start checking numbers!`,
+              `🎉 <b>WhatsApp Account Paired Successfully!</b>\n\n` +
+              `👤 <b>Account Name:</b> <code>${pushName}</code>\n` +
+              `📱 <b>Connected Number:</b> ${hiddenNumText}\n\n` +
+              `⚡ <b>Engine Status:</b> Active & Ready!\n` +
+              `Tap /check from the menu to start checking numbers!`,
               {
-                parse_mode: 'Markdown'
+                parse_mode: 'HTML'
               }
             );
           },
@@ -410,16 +412,18 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
           ctx.session.tempMsgIds = [];
 
           const cleanNum = userJid ? userJid.split('@')[0].replace(/\D/g, '') : '';
-          const hiddenNumText = cleanNum ? `||+${cleanNum}|| (🙈 Tap to reveal)` : '||Connected||';
+          const hiddenNumText = cleanNum
+            ? `<tg-spoiler><b>+${cleanNum}</b></tg-spoiler> (🙈 Tap to reveal)`
+            : '<tg-spoiler><b>Connected</b></tg-spoiler>';
 
           await ctx.reply(
-            `🎉 *WhatsApp Account Paired Successfully!*\n\n` +
-            `👤 *Account Name:* \`${pushName}\`\n` +
-            `📱 *Connected Number:* ${hiddenNumText}\n\n` +
-            `⚡ *Engine Status:* Active & Ready!\n` +
-            `Tap \`/check\` from the menu to start checking numbers!`,
+            `🎉 <b>WhatsApp Account Paired Successfully!</b>\n\n` +
+            `👤 <b>Account Name:</b> <code>${pushName}</code>\n` +
+            `📱 <b>Connected Number:</b> ${hiddenNumText}\n\n` +
+            `⚡ <b>Engine Status:</b> Active & Ready!\n` +
+            `Tap /check from the menu to start checking numbers!`,
             {
-              parse_mode: 'Markdown'
+              parse_mode: 'HTML'
             }
           );
         },

@@ -270,17 +270,18 @@ function createBot(token) {
 
     const session = sessionManager.getSession(userId);
     const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
-    const hiddenNumText = cleanNum ? `||+${cleanNum}|| (🙈 Tap to reveal)` : '||Connected||';
+    const hiddenNumText = cleanNum
+      ? `<tg-spoiler><b>+${cleanNum}</b></tg-spoiler> (🙈 Tap to reveal)`
+      : '<tg-spoiler><b>Connected</b></tg-spoiler>';
 
     return ctx.reply(
-      `${header}` +
-      `🎉 *WhatsApp Account Connected & Active!*\n\n` +
-      `👤 *Account Name:* \`${session.pushName || 'WhatsApp Account'}\`\n` +
-      `📱 *Connected Number:* ${hiddenNumText}\n\n` +
-      `⚡ *WhatsApp Checking Engine:* Ready!\n` +
-      `Tap \`/check\` from the menu to start checking numbers!`,
+      `🎉 <b>WhatsApp Account Connected & Active!</b>\n\n` +
+      `👤 <b>Account Name:</b> <code>${session.pushName || 'WhatsApp Account'}</code>\n` +
+      `📱 <b>Connected Number:</b> ${hiddenNumText}\n\n` +
+      `⚡ <b>WhatsApp Checking Engine:</b> Ready!\n` +
+      `Tap /check from the menu to start checking numbers!`,
       {
-        parse_mode: 'Markdown'
+        parse_mode: 'HTML'
       }
     );
   };
@@ -457,31 +458,33 @@ function createBot(token) {
     const botUsername = ctx.botInfo?.username || 'KKHWsCheckerProBot';
     const refLink = `https://t.me/${botUsername}?start=ref_${userId}`;
 
-    let waStatusText = `📱 *WhatsApp Connection Status:*\n🔴 *Status:* Disconnected & Offline`;
+    let waStatusText = `📱 <b>WhatsApp Connection Status:</b>\n🔴 <b>Status:</b> Disconnected & Offline`;
     if (isConnected) {
       const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
-      const hiddenNumText = cleanNum ? `||+${cleanNum}|| (🙈 Tap to reveal)` : '||Connected||';
+      const hiddenNumText = cleanNum
+        ? `<tg-spoiler><b>+${cleanNum}</b></tg-spoiler> (🙈 Tap to reveal)`
+        : '<tg-spoiler><b>Connected</b></tg-spoiler>';
 
       waStatusText =
-        `📱 *WhatsApp Connection Status:*\n` +
-        `🟢 *Status:* Connected & Active\n` +
-        `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
-        `📱 *Connected Number:* ${hiddenNumText}\n` +
-        `⚡ *Engine Status:* Operational & Ready to Check!`;
+        `📱 <b>WhatsApp Connection Status:</b>\n` +
+        `🟢 <b>Status:</b> Connected & Active\n` +
+        `👤 <b>Account Name:</b> <code>${session?.pushName || 'WhatsApp Account'}</code>\n` +
+        `📱 <b>Connected Number:</b> ${hiddenNumText}\n` +
+        `⚡ <b>Engine Status:</b> Operational & Ready to Check!`;
     }
 
     return ctx.reply(
-      `👤 *Telegram User Profile & Account Status*\n\n` +
-      `🆔 *Telegram User ID:* \`${userId}\`\n` +
-      `👤 *Name:* \`${ctx.from.first_name} ${ctx.from.last_name || ''}\`\n` +
-      `🏷️ *Username:* @${ctx.from.username || 'N/A'}\n` +
-      `👑 *Admin Status:* \`${isAdminUser ? 'YES (Administrator)' : 'NO (User)'}\`\n\n` +
+      `👤 <b>Telegram User Profile & Account Status</b>\n\n` +
+      `🆔 <b>Telegram User ID:</b> <code>${userId}</code>\n` +
+      `👤 <b>Name:</b> <code>${ctx.from.first_name} ${ctx.from.last_name || ''}</code>\n` +
+      `🏷️ <b>Username:</b> @${ctx.from.username || 'N/A'}\n` +
+      `👑 <b>Admin Status:</b> <code>${isAdminUser ? 'YES (Administrator)' : 'NO (User)'}</code>\n\n` +
       `${waStatusText}\n\n` +
-      `👥 *Referral System Details:*\n` +
-      `• *Total Users Invited:* \`${user?.referralCount || 0}\`\n` +
-      `• *Your Personal Referral Link:*\n\`${refLink}\``,
+      `👥 <b>Referral System Details:</b>\n` +
+      `• <b>Total Users Invited:</b> <code>${user?.referralCount || 0}</code>\n` +
+      `• <b>Your Personal Referral Link:</b>\n<code>${refLink}</code>`,
       {
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',
         ...getProfileKeyboard(isConnected)
       }
     );
