@@ -51,8 +51,7 @@ function createBot(token) {
       { command: 'check', description: '🔍 Start Checking' },
       { command: 'profile', description: '👤 Profile' },
       { command: 'leaderboard', description: '🏆 Top Referrers' },
-      { command: 'guide', description: '📖 Guide' },
-      { command: 'clear', description: '🧹 Clear Chat History' }
+      { command: 'guide', description: '📖 Guide' }
     ]);
   }).then(() => {
     // 2. Set Admin-only Commands Scope (Includes /admin ONLY for Admin chat IDs)
@@ -65,8 +64,7 @@ function createBot(token) {
         { command: 'profile', description: '👤 Profile' },
         { command: 'leaderboard', description: '🏆 Top Referrers' },
         { command: 'admin', description: '⚙️ Admin Panel' },
-        { command: 'guide', description: '📖 Guide' },
-        { command: 'clear', description: '🧹 Clear Chat History' }
+        { command: 'guide', description: '📖 Guide' }
       ], { scope: { type: 'chat', chat_id: Number(adminId) } }).catch(() => {});
     });
     console.log('✅ Registered Telegram Bot Commands (Default & Admin Scopes)');
@@ -94,7 +92,7 @@ function createBot(token) {
         return ctx.reply(`🔴 *Account Banned*\n\nYour account has been banned by the Administrator. Access restricted.`, { parse_mode: 'Markdown' });
       }
 
-      // Dynamic Slash Command Menu for Admin users (Includes /admin and /clear)
+      // Dynamic Slash Command Menu for Admin users (Includes /admin)
       if (db.isAdmin(userId) && !ctx.session.adminMenuSet) {
         ctx.session.adminMenuSet = true;
         bot.telegram.setMyCommands([
@@ -104,8 +102,7 @@ function createBot(token) {
           { command: 'profile', description: '👤 Profile' },
           { command: 'leaderboard', description: '🏆 Top Referrers' },
           { command: 'admin', description: '⚙️ Admin Panel' },
-          { command: 'guide', description: '📖 Guide' },
-          { command: 'clear', description: '🧹 Clear Chat History' }
+          { command: 'guide', description: '📖 Guide' }
         ], { scope: { type: 'chat', chat_id: userId } }).catch(() => { });
       }
 
@@ -357,49 +354,6 @@ function createBot(token) {
   // /menu command
   bot.command('menu', (ctx) => {
     return sendMainMenu(ctx, '🏠 *Main Menu*');
-  });
-
-  // Helper function to execute 100% reliable chat cleaner without zero-message gaps
-  const executeChatCleaner = async (ctx) => {
-    const chatId = ctx.chat.id;
-    const triggerMsgId = ctx.message?.message_id || ctx.callbackQuery?.message?.message_id || 0;
-
-    // Reset active session state & timers
-    if (ctx.session.pairingTimer) { clearInterval(ctx.session.pairingTimer); ctx.session.pairingTimer = null; }
-    if (ctx.session.qrTimer) { clearTimeout(ctx.session.qrTimer); ctx.session.qrTimer = null; }
-    ctx.session.state = null;
-    ctx.session.pairingPromptMsgId = null;
-
-    // STEP 1: Send fresh Main Menu card FIRST (guarantees chat never drops to 0 messages!)
-    const freshMenuMsg = await sendMainMenu(ctx, '🚀 *Bot Main Menu*').catch(() => null);
-    const anchorMsgId = freshMenuMsg?.message_id || 0;
-
-    // STEP 2: Collect all old message IDs to delete (skipping anchorMsgId & protected broadcasts)
-    const idsToDelete = new Set();
-    if (triggerMsgId && triggerMsgId !== anchorMsgId) idsToDelete.add(triggerMsgId);
-
-    if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
-      ctx.session.tempMsgIds.forEach(id => {
-        if (id !== anchorMsgId) idsToDelete.add(id);
-      });
-      ctx.session.tempMsgIds = [];
-    }
-
-    const startId = (triggerMsgId || anchorMsgId) + 5;
-    for (let id = startId; id >= Math.max(1, startId - 250); id--) {
-      if (id !== anchorMsgId && !db.isMessageProtected(chatId, id)) {
-        idsToDelete.add(id);
-      }
-    }
-
-    // STEP 3: Fire parallel non-blocking background sweep for all older messages
-    const ids = [...idsToDelete];
-    Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(chatId, mId))).catch(() => {});
-  };
-
-  // /clear command — Professional Chat History Cleaner
-  bot.command('clear', async (ctx) => {
-    return executeChatCleaner(ctx);
   });
 
   // /guide command
@@ -721,11 +675,6 @@ function createBot(token) {
     return sendMainMenu(ctx, '🏠 *Main Menu*');
   });
 
-  // 🧹 Clear Chat Action — Reliable Chat History Cleaner
-  bot.action('CLEAR_CHAT', async (ctx) => {
-    await ctx.answerCbQuery('🧹 Clearing chat history...').catch(() => {});
-    return executeChatCleaner(ctx);
-  });
 
   // Cancel action — In-place transition back to Main Menu (Prevents Telegram 'START' button popup)
   bot.action('CANCEL_ACTION', async (ctx) => {
