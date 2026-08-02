@@ -212,7 +212,7 @@ function createBot(token) {
     cleanupTempFiles(userId);
 
     const isConnected = sessionManager.isConnected(userId);
-    const userName = ctx.from?.first_name || 'User';
+    const userName = String(ctx.from?.first_name || 'User').replace(/[_*`[\]()]/g, '');
 
     // Verify user against persistent database (restored from encrypted GitHub Gist)
     const existingUser = db.getUser(userId);
@@ -252,7 +252,7 @@ function createBot(token) {
     const guideText =
       `📖 *WhatsApp Registration Checker - User Guide*\n\n` +
       `1️⃣ *Connecting WhatsApp:* \n` +
-      `• Tap connection buttons below or send phone number (e.g. \`8801700000000\`).\n` +
+      `• Tap connection buttons below or send phone number (e.g. \`88018XXXXXXXX\`).\n` +
       `• In WhatsApp ➔ **Linked Devices** ➔ **Link with phone number instead** and type code!\n\n` +
       `2️⃣ *Checking WhatsApp Numbers:* \n` +
       `• Tap \`/check\` to start checking numbers.\n\n`;
@@ -266,19 +266,25 @@ function createBot(token) {
 
     // If NOT connected, show clean guide with a single Connect button
     if (!isConnected) {
-      const msg = await ctx.reply(
+      const menuText =
         `${header}` +
         `⚠️ *WhatsApp Account Not Connected*\n` +
         `Please connect your WhatsApp account to start checking.\n\n` +
-        `Tap the button below to connect your WhatsApp account:`,
-        {
-          parse_mode: 'Markdown',
-          ...Markup.inlineKeyboard([
-            [Markup.button.callback('🔗 Connect WhatsApp Account', 'MENU_CONNECT')]
-          ])
-        }
-      );
-      return msg;
+        `Tap the button below to connect your WhatsApp account:`;
+
+      const options = {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('🔗 Connect WhatsApp Account', 'MENU_CONNECT')]
+        ])
+      };
+
+      if (ctx.callbackQuery) {
+        return ctx.editMessageText(menuText, options).catch(() => {
+          return ctx.reply(menuText, options).catch(() => {});
+        });
+      }
+      return ctx.reply(menuText, options).catch(() => {});
     }
 
     const session = sessionManager.getSession(userId);
@@ -292,18 +298,27 @@ function createBot(token) {
       }
     }
 
-    return ctx.reply(
+    const connectedText =
       `${header}` +
       `🎉 *WhatsApp Account Connected & Active!*\n\n` +
-      `👤 *Account Name:* \`${session.pushName || 'WhatsApp Account'}\`\n` +
+      `👤 *Account Name:* \`${session?.pushName || 'WhatsApp Account'}\`\n` +
       `📱 *Connected Number:* \`${numDisplay}\`\n\n` +
       `⚡ *WhatsApp Checking Engine:* Ready!\n` +
-      `Tap \`/check\` from the menu to start checking numbers!`,
-      {
-        parse_mode: 'Markdown',
-        ...getMainMenuKeyboard(true, false)
-      }
-    );
+      `Tap \`/check\` from the menu to start checking numbers!`;
+
+    const connectedOptions = {
+      parse_mode: 'Markdown',
+      ...getMainMenuKeyboard(true, false)
+    };
+
+    if (ctx.callbackQuery) {
+      return ctx.editMessageText(connectedText, connectedOptions).catch(() => {
+        return ctx.reply(connectedText, connectedOptions).catch(() => {});
+      });
+    }
+
+    return ctx.reply(connectedText, connectedOptions).catch(() => {});
+  };
   };
 
   // /start command (Handles both bot.start and /start slash command)
