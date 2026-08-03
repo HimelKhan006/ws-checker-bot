@@ -6,7 +6,19 @@ const {
   getConnectionMethodKeyboard,
   getCancelKeyboard
 } = require('../keyboards');
-const { cleanPhoneNumber } = require('../../utils/numberParser');
+async function purgeAllConnectedMessages(ctx) {
+  if (!ctx || !ctx.session) return;
+  ctx.session.connectedCardMsgIds = ctx.session.connectedCardMsgIds || [];
+  if (ctx.session.connectedCardMsgId && !ctx.session.connectedCardMsgIds.includes(ctx.session.connectedCardMsgId)) {
+    ctx.session.connectedCardMsgIds.push(ctx.session.connectedCardMsgId);
+  }
+  if (ctx.session.connectedCardMsgIds.length > 0) {
+    const ids = [...ctx.session.connectedCardMsgIds];
+    ctx.session.connectedCardMsgIds = [];
+    ctx.session.connectedCardMsgId = null;
+    await Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId).catch(() => {}))).catch(() => {});
+  }
+}
 
 function registerConnectionHandlers(bot) {
   // ─── Select Connect WhatsApp ───────────────────────────────────────────────
@@ -181,6 +193,7 @@ function registerConnectionHandlers(bot) {
             }
 
             // INSTANT Connection Confirmation Card!
+            ctx.session.connectedCardMsgIds = ctx.session.connectedCardMsgIds || [];
             const connMsg = await ctx.reply(
               `🎉 *WhatsApp Account Connected Successfully!*\n\n` +
               `✅ *Status:* Connection Verified & Active!\n\n` +
@@ -195,6 +208,7 @@ function registerConnectionHandlers(bot) {
             ).catch(() => {});
             if (connMsg && connMsg.message_id) {
               ctx.session.connectedCardMsgId = connMsg.message_id;
+              ctx.session.connectedCardMsgIds.push(connMsg.message_id);
             }
           },
 
@@ -203,11 +217,8 @@ function registerConnectionHandlers(bot) {
             ctx.session.state = 'AWAITING_PAIRING_NUMBER';
             ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
 
-            // Auto-delete connected card on disconnect
-            if (ctx.session.connectedCardMsgId) {
-              await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.connectedCardMsgId).catch(() => {});
-              ctx.session.connectedCardMsgId = null;
-            }
+            // Auto-delete ALL connected status cards on disconnect
+            await purgeAllConnectedMessages(ctx);
 
             const msg = await ctx.reply(
               `⚠️ *WhatsApp Account Disconnected*\n\n` +
@@ -285,11 +296,8 @@ function registerConnectionHandlers(bot) {
     await sessionManager.disconnect(userId, true);
     ctx.session.state = null;
 
-    // Auto-delete connected card on logout
-    if (ctx.session.connectedCardMsgId) {
-      await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.connectedCardMsgId).catch(() => {});
-      ctx.session.connectedCardMsgId = null;
-    }
+    // Auto-delete ALL connected cards on logout
+    await purgeAllConnectedMessages(ctx);
 
     return ctx.editMessageText(
       `🚪 *WhatsApp Account Logout Complete*\n\n` +
@@ -514,6 +522,7 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
           }
 
           // INSTANT Connection Confirmation Card!
+          ctx.session.connectedCardMsgIds = ctx.session.connectedCardMsgIds || [];
           const connMsg = await ctx.reply(
             `🎉 *WhatsApp Account Connected Successfully!*\n\n` +
             `✅ *Status:* Connection Verified & Active!\n\n` +
@@ -528,6 +537,7 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
           ).catch(() => {});
           if (connMsg && connMsg.message_id) {
             ctx.session.connectedCardMsgId = connMsg.message_id;
+            ctx.session.connectedCardMsgIds.push(connMsg.message_id);
           }
         },
 
@@ -538,11 +548,8 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
           ctx.session.state = 'AWAITING_PAIRING_NUMBER';
           ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
 
-          // Auto-delete connected card on disconnect
-          if (ctx.session.connectedCardMsgId) {
-            await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.connectedCardMsgId).catch(() => {});
-            ctx.session.connectedCardMsgId = null;
-          }
+          // Auto-delete ALL connected status cards on disconnect
+          await purgeAllConnectedMessages(ctx);
 
           const msg = await ctx.reply(
             `⚠️ *WhatsApp Account Disconnected*\n\n` +
