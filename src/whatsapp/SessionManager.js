@@ -261,14 +261,14 @@ class SessionManager {
       (async () => {
         const cleanNumber = phoneNumber.replace(/\D/g, '');
 
-        // Wait up to 10 seconds for WebSocket connection to open cleanly
-        for (let i = 0; i < 100; i++) {
-          if (sock.ws?.isOpen || sessionData.state === 'CONNECTED' || sessionData.isSocketReady) break;
+        // Wait up to 12 seconds for WebSocket connection to open cleanly and stabilize
+        for (let i = 0; i < 120; i++) {
+          if (sock.ws?.isOpen && sock.ws?.readyState === 1) break;
           await delay(100);
         }
 
-        // 500ms stabilization delay before requestPairingCode call
-        await delay(500);
+        // 1500ms stabilization delay to ensure Noise Handshake is 100% complete
+        await delay(1500);
 
         let attempts = 0;
         const maxAttempts = 5;
@@ -284,9 +284,9 @@ class SessionManager {
             if (code) {
               sessionData.pairingCode = code;
               const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
-              console.log(`[Engine] Pairing code for user ${uid}: ${formattedCode}`);
+              console.log(`[Engine] Pairing code generated for user ${uid}: ${formattedCode}`);
               if (sessionData.callbacks.onPairingCode) {
-                sessionData.callbacks.onPairingCode(formattedCode);
+                sessionData.callbacks.onPairingCode(formattedCode, code);
               }
               return; // success — stop loop
             }
@@ -298,7 +298,7 @@ class SessionManager {
               }
               return;
             }
-            await delay(1500 * attempts);
+            await delay(2000 * attempts);
           }
         }
       })();
