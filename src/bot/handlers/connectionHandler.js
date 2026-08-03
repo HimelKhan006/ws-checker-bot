@@ -173,12 +173,12 @@ function registerConnectionHandlers(bot) {
               numDisplay = `+${cleanNum.substring(0, 3)}****`;
             }
 
-            // Fast non-blocking background cleanup of QR photo temp messages
-            if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
-              const ids = [...ctx.session.tempMsgIds];
-              ctx.session.tempMsgIds = [];
-              Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
-            }
+            // Fast non-blocking background cleanup of temp messages & prompt card upon connection
+            const idsToDelete = [...(ctx.session.tempMsgIds || [])];
+            if (ctx.session.pairingPromptMsgId) idsToDelete.push(ctx.session.pairingPromptMsgId);
+            ctx.session.tempMsgIds = [];
+            ctx.session.pairingPromptMsgId = null;
+            Promise.allSettled(idsToDelete.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
 
             // INSTANT Connection Confirmation Card!
             await ctx.reply(
@@ -492,12 +492,12 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
             numDisplay = `+${cleanNum.substring(0, 3)}****`;
           }
 
-          // Fast non-blocking background cleanup of temp messages (pairing code cards)
-          if (ctx.session.tempMsgIds && Array.isArray(ctx.session.tempMsgIds)) {
-            const ids = [...ctx.session.tempMsgIds];
-            ctx.session.tempMsgIds = [];
-            Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
-          }
+          // Delete pairing prompt card and all temp messages upon successful connection!
+          const idsToDelete = [...(ctx.session.tempMsgIds || [])];
+          if (ctx.session.pairingPromptMsgId) idsToDelete.push(ctx.session.pairingPromptMsgId);
+          ctx.session.tempMsgIds = [];
+          ctx.session.pairingPromptMsgId = null;
+          Promise.allSettled(idsToDelete.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
 
           // INSTANT Connection Confirmation Card!
           await ctx.reply(
