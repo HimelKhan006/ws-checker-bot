@@ -431,11 +431,17 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
   if (targetMsgId) {
     statusMsg = { message_id: targetMsgId };
   } else {
-    // Send status card as reply to user's phone number message
-    statusMsg = await ctx.reply(
-      `⌛ *Initializing WhatsApp Engine for \`+${cleanNum}\`...*\n\nGenerating your pairing code, please wait...`,
-      { reply_to_message_id: ctx.message?.message_id, parse_mode: 'Markdown' }
-    );
+    try {
+      statusMsg = await ctx.reply(
+        `⌛ *Initializing WhatsApp Engine for \`+${cleanNum}\`...*\n\nGenerating your pairing code, please wait...`,
+        { reply_to_message_id: ctx.message?.message_id, parse_mode: 'Markdown' }
+      );
+    } catch (e) {
+      statusMsg = await ctx.reply(
+        `⌛ *Initializing WhatsApp Engine for \`+${cleanNum}\`...*\n\nGenerating your pairing code, please wait...`,
+        { parse_mode: 'Markdown' }
+      );
+    }
     if (statusMsg && statusMsg.message_id) {
       ctx.session.tempMsgIds.push(statusMsg.message_id);
     }
@@ -462,17 +468,32 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
             `4. *Type the 8-character code shown above!*\n\n` +
             `_Tap the code above to copy it automatically._`;
 
-          // Edit status card into pairing code card in-place
-          await ctx.telegram.editMessageText(
-            ctx.chat.id,
-            statusMsg.message_id,
-            null,
-            renderMessage(secondsLeft),
-            {
-              parse_mode: 'Markdown',
-              ...getCancelKeyboard()
+          // Edit status card into pairing code card in-place with fallback reply
+          let editOk = false;
+          try {
+            await ctx.telegram.editMessageText(
+              ctx.chat.id,
+              statusMsg.message_id,
+              null,
+              renderMessage(secondsLeft),
+              {
+                parse_mode: 'Markdown',
+                ...getCancelKeyboard()
+              }
+            );
+            editOk = true;
+          } catch (e) {}
+
+          if (!editOk) {
+            const fallbackMsg = await ctx.reply(
+              renderMessage(secondsLeft),
+              { parse_mode: 'Markdown', ...getCancelKeyboard() }
+            ).catch(() => {});
+            if (fallbackMsg && fallbackMsg.message_id) {
+              statusMsg.message_id = fallbackMsg.message_id;
+              ctx.session.tempMsgIds.push(fallbackMsg.message_id);
             }
-          ).catch(() => {});
+          }
 
           if (ctx.session.pairingTimer) clearInterval(ctx.session.pairingTimer);
 
@@ -486,18 +507,34 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
             }
 
             if (secondsLeft > 0) {
-              await ctx.telegram.editMessageText(
-                ctx.chat.id,
-                statusMsg.message_id,
-                null,
-                renderMessage(secondsLeft),
-                { parse_mode: 'Markdown', ...getCancelKeyboard() }
-              ).catch(() => {});
+              let editOk = false;
+              try {
+                await ctx.telegram.editMessageText(
+                  ctx.chat.id,
+                  statusMsg.message_id,
+                  null,
+                  renderMessage(secondsLeft),
+                  { parse_mode: 'Markdown', ...getCancelKeyboard() }
+                );
+                editOk = true;
+              } catch (e) {}
+
+              if (!editOk) {
+                const fallbackMsg = await ctx.reply(
+                  renderMessage(secondsLeft),
+                  { parse_mode: 'Markdown', ...getCancelKeyboard() }
+                ).catch(() => {});
+                if (fallbackMsg && fallbackMsg.message_id) {
+                  statusMsg.message_id = fallbackMsg.message_id;
+                  ctx.session.tempMsgIds.push(fallbackMsg.message_id);
+                }
+              }
             } else {
               clearInterval(ctx.session.pairingTimer);
 
               if (!sessionManager.isConnected(userId)) {
                 // Code expired — auto-refresh in-place with ZERO flash/deletion!
+                console.log(`[Pairing] Code expired for user ${userId}. Requesting fresh code...`);
                 handlePairingPhoneNumberInput(ctx, statusMsg.message_id);
               }
             }
@@ -507,6 +544,7 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
         // ── Connected successfully ─────────────────────────────────────────
         onConnected: async ({ userJid, pushName }) => {
           if (ctx.session.pairingTimer) clearInterval(ctx.session.pairingTimer);
+          ctx.session.state = null;
 
           const cleanNum = userJid ? userJid.split('@')[0].replace(/\D/g, '') : '';
           let numDisplay = '••••••••••';
@@ -572,37 +610,32 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
         // ── Pairing engine error ───────────────────────────────────────────
         onError: async (errMessage) => {
           if (ctx.session.pairingTimer) clearInterval(ctx.session.pairingTimer);
-          await ctx.telegram.editMessageText(
-            ctx.chat.id,
-            statusMsg.message_id,
-            null,
-            `❌ *Pairing Failed*\n\n\`${errMessage}\`\n\nPlease try again.`,
-            {
-              parse_mode: 'Markdown',
-              ...getCancelKeyboard()
-            }
-          ).catch(async () => {
+          try {
+            await ctx.telegram.editMessageText(
+              ctx.chat.id,
+              statusMsg.message_id,
+              null,
+              `❌ *Pairing Failed*\n\n\`${errMessage}\`\n\nPlease try again.`,
+              {
+                parse_mode: 'Markdown',
+                ...getCancelKeyboard()
+              }
+            );
+          } catch (e) {
             await ctx.reply(
               `❌ *Pairing Failed:* ${errMessage}\n\nPlease try again.`,
               { parse_mode: 'Markdown', ...getMainMenuKeyboard(false) }
-            );
-          });
+            ).catch(() => {});
+          }
         }
       }
     });
   } catch (err) {
-    await ctx.telegram.editMessageText(
-      ctx.chat.id,
-      statusMsg.message_id,
-      null,
+    if (ctx.session.pairingTimer) clearInterval(ctx.session.pairingTimer);
+    await ctx.reply(
       `❌ *Error creating session:*\n\`${err.message}\`\n\nPlease try again.`,
-      {
-        parse_mode: 'Markdown',
-        ...getCancelKeyboard()
-      }
-    ).catch(async () => {
-      await ctx.reply(`❌ *Error:* ${err.message}`, { parse_mode: 'Markdown', ...getMainMenuKeyboard(false) });
-    });
+      { parse_mode: 'Markdown', ...getMainMenuKeyboard(false) }
+    ).catch(() => {});
   }
 }
 
