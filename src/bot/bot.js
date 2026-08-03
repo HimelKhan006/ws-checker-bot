@@ -413,7 +413,7 @@ function createBot(token) {
         `⚠️ *WhatsApp Account Not Connected*\n` +
         `Please connect your WhatsApp account first before checking.\n\n` +
         `1️⃣ *Send your phone number with country code below*\n` +
-        `   *Example:* \`8801700000000\`\n\n` +
+        `   *Example:* \`88018XXXXXXXX\`\n\n` +
         `2️⃣ Or tap 📷 *Connect via QR Code* below:`,
         {
           parse_mode: 'Markdown',

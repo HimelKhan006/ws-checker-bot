@@ -204,7 +204,7 @@ function registerConnectionHandlers(bot) {
               `⚠️ *WhatsApp Account Disconnected*\n\n` +
               `Your WhatsApp session has been unlinked. Please reconnect to continue checking.\n\n` +
               `1️⃣ *Send your phone number below*\n` +
-              `   *Example:* \`8801700000000\`\n\n` +
+              `   *Example:* \`88018XXXXXXXX\`\n\n` +
               `2️⃣ Or tap 📷 *Connect via QR Code* below:`,
               {
                 parse_mode: 'Markdown',
@@ -430,7 +430,7 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null, attempt = 
             `2. Tap *Settings / Menu* ⚙️ ➔ *Linked Devices*.\n` +
             `3. Tap *Link a Device* ➔ *Link with phone number instead*.\n` +
             `4. *Type the 8-character code shown above!*\n\n` +
-            `_Tap the code above to copy it automatically._`;
+            `_Tap code above to copy with plain format: \`${rCode || fCode}\`_`;
 
           // Edit status card into pairing code card in-place (ZERO message deletion, ZERO screen flashes!)
           await ctx.telegram.editMessageText(
@@ -512,7 +512,7 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null, attempt = 
             `⚠️ *WhatsApp Account Disconnected*\n\n` +
             `Your WhatsApp session has been unlinked. Please reconnect to continue checking.\n\n` +
             `1️⃣ *Send your phone number below*\n` +
-            `   *Example:* \`8801700000000\`\n\n` +
+            `   *Example:* \`88018XXXXXXXX\`\n\n` +
             `2️⃣ Or tap 📷 *Connect via QR Code* below:`,
             {
               parse_mode: 'Markdown',
