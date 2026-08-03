@@ -157,8 +157,8 @@ class SessionManager {
           try {
             const qrBuffer = await QRCode.toBuffer(qr, {
               margin: 2,
-              width: 512,
-              errorCorrectionLevel: 'M'
+              scale: 8,
+              color: { dark: '#000000', light: '#FFFFFF' }
             });
             sessionData.callbacks.onQr(qrBuffer);
           } catch (err) {
