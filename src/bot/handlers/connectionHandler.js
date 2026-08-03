@@ -133,15 +133,20 @@ function registerConnectionHandlers(bot) {
               }
 
               const sentPhoto = await ctx.replyWithPhoto(
-                { source: qrBuffer },
+                { source: qrBuffer, filename: 'qrcode.png' },
                 {
                   caption: captionText,
                   parse_mode: 'Markdown',
                   ...getCancelKeyboard()
                 }
-              );
-              photoMessageId = sentPhoto.message_id;
-              if (photoMessageId) ctx.session.tempMsgIds.push(photoMessageId);
+              ).catch((err) => {
+                console.error('[QR] replyWithPhoto failed:', err.message);
+              });
+
+              if (sentPhoto && sentPhoto.message_id) {
+                photoMessageId = sentPhoto.message_id;
+                ctx.session.tempMsgIds.push(photoMessageId);
+              }
             } catch (err) {
               console.error('[QR] Failed to render QR photo:', err.message);
             }

@@ -157,8 +157,8 @@ class SessionManager {
           try {
             const qrBuffer = await QRCode.toBuffer(qr, {
               margin: 2,
-              scale: 8,
-              color: { dark: '#128C7E', light: '#FFFFFF' } // WhatsApp green
+              width: 512,
+              errorCorrectionLevel: 'M'
             });
             sessionData.callbacks.onQr(qrBuffer);
           } catch (err) {
