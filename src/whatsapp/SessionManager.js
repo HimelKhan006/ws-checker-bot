@@ -25,8 +25,8 @@ class SessionManager {
       this.sessions.forEach((session) => {
         if (session && session.sock && session.state === 'CONNECTED') {
           try {
-            session.sock.sendPresenceUpdate('available').catch(() => { });
-          } catch (e) { }
+            session.sock.sendPresenceUpdate('available').catch(() => {});
+          } catch (e) {}
         }
       });
     }, 120000); // every 2 minutes (more aggressive than 3min to stay safe)
@@ -65,8 +65,8 @@ class SessionManager {
       if (session.sock) {
         try {
           session.sock.ev.removeAllListeners();
-          try { session.sock.end(); } catch (e) { }
-        } catch (e) { }
+          try { session.sock.end(); } catch (e) {}
+        } catch (e) {}
       }
     }
     this.sessions.delete(uid);
@@ -230,10 +230,9 @@ class SessionManager {
         if (isLoggedOut || isConflict || isBadSession) {
           // Real logout — wipe session, notify user
           sessionData.state = 'DISCONNECTED';
-          const onDisconnectedCb = sessionData.callbacks.onDisconnected;
           await this._terminateSession(uid, true);
-          if (onDisconnectedCb && wasConnected) {
-            onDisconnectedCb('LOGGED_OUT');
+          if (sessionData.callbacks.onDisconnected && wasConnected) {
+            sessionData.callbacks.onDisconnected('LOGGED_OUT');
           }
         } else if (isTempError || !isLoggedOut) {
           // Temporary error — exponential backoff reconnect
@@ -319,9 +318,9 @@ class SessionManager {
       if (session.sock) {
         try {
           session.sock.ev.removeAllListeners();
-          try { await session.sock.logout(); } catch (e) { }
-          try { session.sock.end(); } catch (e) { }
-        } catch (e) { }
+          try { await session.sock.logout(); } catch (e) {}
+          try { session.sock.end(); } catch (e) {}
+        } catch (e) {}
       }
     }
     this.sessions.delete(uid);
@@ -349,7 +348,7 @@ class SessionManager {
         const credsFile = path.join(userPath, 'creds.json');
         if (fs.lstatSync(userPath).isDirectory() && fs.existsSync(credsFile)) {
           console.log(`[Engine] Restoring saved session for user ${userId}...`);
-          this.createSession(userId, { isNewPairing: false }).catch(() => { });
+          this.createSession(userId, { isNewPairing: false }).catch(() => {});
         }
       }
     } catch (e) {

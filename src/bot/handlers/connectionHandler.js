@@ -6,19 +6,7 @@ const {
   getConnectionMethodKeyboard,
   getCancelKeyboard
 } = require('../keyboards');
-async function purgeAllConnectedMessages(ctx) {
-  if (!ctx || !ctx.session) return;
-  ctx.session.connectedCardMsgIds = ctx.session.connectedCardMsgIds || [];
-  if (ctx.session.connectedCardMsgId && !ctx.session.connectedCardMsgIds.includes(ctx.session.connectedCardMsgId)) {
-    ctx.session.connectedCardMsgIds.push(ctx.session.connectedCardMsgId);
-  }
-  if (ctx.session.connectedCardMsgIds.length > 0) {
-    const ids = [...ctx.session.connectedCardMsgIds];
-    ctx.session.connectedCardMsgIds = [];
-    ctx.session.connectedCardMsgId = null;
-    await Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId).catch(() => {}))).catch(() => {});
-  }
-}
+const { cleanPhoneNumber } = require('../../utils/numberParser');
 
 function registerConnectionHandlers(bot) {
   // ─── Select Connect WhatsApp ───────────────────────────────────────────────
@@ -52,13 +40,7 @@ function registerConnectionHandlers(bot) {
     ctx.session.state = 'AWAITING_PAIRING_NUMBER';
     ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
 
-    const promptId = ctx.callbackQuery?.message?.message_id;
-    if (promptId) {
-      ctx.session.pairingPromptMsgId = promptId;
-      ctx.session.tempMsgIds.push(promptId);
-    }
-
-    await ctx.editMessageText(
+    const msg = await ctx.editMessageText(
       `📱 *Connect WhatsApp*\n\n` +
       `⚠️ *WhatsApp Account Not Connected*\n` +
       `Please connect your WhatsApp account to start checking.\n\n` +
@@ -69,7 +51,12 @@ function registerConnectionHandlers(bot) {
         parse_mode: 'Markdown',
         ...getConnectionMethodKeyboard()
       }
-    ).catch(() => {});
+    );
+
+    if (msg && msg.message_id) {
+      ctx.session.pairingPromptMsgId = msg.message_id;
+      ctx.session.tempMsgIds.push(msg.message_id);
+    }
   });
 
   // ─── Pairing Code Method ───────────────────────────────────────────────────
@@ -78,13 +65,7 @@ function registerConnectionHandlers(bot) {
     ctx.session.state = 'AWAITING_PAIRING_NUMBER';
     ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
 
-    const promptId = ctx.callbackQuery?.message?.message_id;
-    if (promptId) {
-      ctx.session.pairingPromptMsgId = promptId;
-      ctx.session.tempMsgIds.push(promptId);
-    }
-
-    await ctx.editMessageText(
+    const msg = await ctx.editMessageText(
       `🔢 *Connect via Pairing Code*\n\n` +
       `Please *REPLY* to this message with your WhatsApp phone number including country code.\n\n` +
       `*Example:* \`88018XXXXXXXX\`\n\n` +
@@ -93,7 +74,12 @@ function registerConnectionHandlers(bot) {
         parse_mode: 'Markdown',
         ...getCancelKeyboard()
       }
-    ).catch(() => {});
+    );
+
+    if (msg && msg.message_id) {
+      ctx.session.pairingPromptMsgId = msg.message_id;
+      ctx.session.tempMsgIds.push(msg.message_id);
+    }
   });
 
   // ─── QR Code Method ────────────────────────────────────────────────────────
@@ -195,8 +181,7 @@ function registerConnectionHandlers(bot) {
             }
 
             // INSTANT Connection Confirmation Card!
-            ctx.session.connectedCardMsgIds = ctx.session.connectedCardMsgIds || [];
-            const connMsg = await ctx.reply(
+            await ctx.reply(
               `🎉 *WhatsApp Account Connected Successfully!*\n\n` +
               `✅ *Status:* Connection Verified & Active!\n\n` +
               `👤 *Account Name:* \`${pushName || 'WhatsApp Account'}\`\n` +
@@ -208,19 +193,12 @@ function registerConnectionHandlers(bot) {
                 ...getMainMenuKeyboard(true, false)
               }
             ).catch(() => {});
-            if (connMsg && connMsg.message_id) {
-              ctx.session.connectedCardMsgId = connMsg.message_id;
-              ctx.session.connectedCardMsgIds.push(connMsg.message_id);
-            }
           },
 
           onDisconnected: async (reason) => {
             console.log(`[QR] User ${userId} disconnected: ${reason}`);
             ctx.session.state = 'AWAITING_PAIRING_NUMBER';
             ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
-
-            // Auto-delete ALL connected status cards on disconnect
-            await purgeAllConnectedMessages(ctx);
 
             const msg = await ctx.reply(
               `⚠️ *WhatsApp Account Disconnected*\n\n` +
@@ -297,9 +275,6 @@ function registerConnectionHandlers(bot) {
 
     await sessionManager.disconnect(userId, true);
     ctx.session.state = null;
-
-    // Auto-delete ALL connected cards on logout
-    await purgeAllConnectedMessages(ctx);
 
     return ctx.editMessageText(
       `🚪 *WhatsApp Account Logout Complete*\n\n` +
@@ -420,31 +395,20 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
   // Wipe old session silently
   await sessionManager.disconnect(userId, true).catch(() => {});
 
-  // Delete prompt card immediately for clean UX (protect targetMsgId during auto-refresh)
+  // Delete prompt card immediately for clean UX
   const promptIdToDelete = ctx.session.pairingPromptMsgId || ctx.message?.reply_to_message?.message_id;
-  if (promptIdToDelete && promptIdToDelete !== targetMsgId) {
+  if (promptIdToDelete) {
     ctx.telegram.deleteMessage(ctx.chat.id, promptIdToDelete).catch(() => {});
     ctx.session.pairingPromptMsgId = null;
   }
 
-  let statusMsg;
-  if (targetMsgId) {
-    statusMsg = { message_id: targetMsgId };
-  } else {
-    try {
-      statusMsg = await ctx.reply(
-        `⌛ *Initializing WhatsApp Engine for \`+${cleanNum}\`...*\n\nGenerating your pairing code, please wait...`,
-        { reply_to_message_id: ctx.message?.message_id, parse_mode: 'Markdown' }
-      );
-    } catch (e) {
-      statusMsg = await ctx.reply(
-        `⌛ *Initializing WhatsApp Engine for \`+${cleanNum}\`...*\n\nGenerating your pairing code, please wait...`,
-        { parse_mode: 'Markdown' }
-      );
-    }
-    if (statusMsg && statusMsg.message_id) {
-      ctx.session.tempMsgIds.push(statusMsg.message_id);
-    }
+  // Send status card as reply to user's phone number message
+  const statusMsg = await ctx.reply(
+    `⌛ *Initializing WhatsApp Engine for \`+${cleanNum}\`...*\n\nGenerating your pairing code, please wait...`,
+    { reply_to_message_id: ctx.message?.message_id, parse_mode: 'Markdown' }
+  );
+  if (statusMsg && statusMsg.message_id) {
+    ctx.session.tempMsgIds.push(statusMsg.message_id);
   }
 
   try {
@@ -468,32 +432,17 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
             `4. *Type the 8-character code shown above!*\n\n` +
             `_Tap the code above to copy it automatically._`;
 
-          // Edit status card into pairing code card in-place with fallback reply
-          let editOk = false;
-          try {
-            await ctx.telegram.editMessageText(
-              ctx.chat.id,
-              statusMsg.message_id,
-              null,
-              renderMessage(secondsLeft),
-              {
-                parse_mode: 'Markdown',
-                ...getCancelKeyboard()
-              }
-            );
-            editOk = true;
-          } catch (e) {}
-
-          if (!editOk) {
-            const fallbackMsg = await ctx.reply(
-              renderMessage(secondsLeft),
-              { parse_mode: 'Markdown', ...getCancelKeyboard() }
-            ).catch(() => {});
-            if (fallbackMsg && fallbackMsg.message_id) {
-              statusMsg.message_id = fallbackMsg.message_id;
-              ctx.session.tempMsgIds.push(fallbackMsg.message_id);
+          // Edit status card into pairing code card in-place
+          await ctx.telegram.editMessageText(
+            ctx.chat.id,
+            statusMsg.message_id,
+            null,
+            renderMessage(secondsLeft),
+            {
+              parse_mode: 'Markdown',
+              ...getCancelKeyboard()
             }
-          }
+          ).catch(() => {});
 
           if (ctx.session.pairingTimer) clearInterval(ctx.session.pairingTimer);
 
@@ -507,35 +456,29 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
             }
 
             if (secondsLeft > 0) {
-              let editOk = false;
-              try {
-                await ctx.telegram.editMessageText(
-                  ctx.chat.id,
-                  statusMsg.message_id,
-                  null,
-                  renderMessage(secondsLeft),
-                  { parse_mode: 'Markdown', ...getCancelKeyboard() }
-                );
-                editOk = true;
-              } catch (e) {}
-
-              if (!editOk) {
-                const fallbackMsg = await ctx.reply(
-                  renderMessage(secondsLeft),
-                  { parse_mode: 'Markdown', ...getCancelKeyboard() }
-                ).catch(() => {});
-                if (fallbackMsg && fallbackMsg.message_id) {
-                  statusMsg.message_id = fallbackMsg.message_id;
-                  ctx.session.tempMsgIds.push(fallbackMsg.message_id);
-                }
-              }
+              await ctx.telegram.editMessageText(
+                ctx.chat.id,
+                statusMsg.message_id,
+                null,
+                renderMessage(secondsLeft),
+                { parse_mode: 'Markdown', ...getCancelKeyboard() }
+              ).catch(() => {});
             } else {
               clearInterval(ctx.session.pairingTimer);
 
               if (!sessionManager.isConnected(userId)) {
-                // Code expired — auto-refresh in-place with ZERO flash/deletion!
-                console.log(`[Pairing] Code expired for user ${userId}. Requesting fresh code...`);
-                handlePairingPhoneNumberInput(ctx, statusMsg.message_id);
+                // Code expired — auto-refresh in-place
+                await ctx.telegram.editMessageText(
+                  ctx.chat.id,
+                  statusMsg.message_id,
+                  null,
+                  `⏰ *Pairing Code Expired!*\n⌛ *Generating a fresh pairing code...*`,
+                  { parse_mode: 'Markdown' }
+                ).catch(() => {});
+
+                setTimeout(() => {
+                  handlePairingPhoneNumberInput(ctx, statusMsg.message_id);
+                }, 1000);
               }
             }
           }, 10000);
@@ -544,7 +487,6 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
         // ── Connected successfully ─────────────────────────────────────────
         onConnected: async ({ userJid, pushName }) => {
           if (ctx.session.pairingTimer) clearInterval(ctx.session.pairingTimer);
-          ctx.session.state = null;
 
           const cleanNum = userJid ? userJid.split('@')[0].replace(/\D/g, '') : '';
           let numDisplay = '••••••••••';
@@ -562,8 +504,7 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
           }
 
           // INSTANT Connection Confirmation Card!
-          ctx.session.connectedCardMsgIds = ctx.session.connectedCardMsgIds || [];
-          const connMsg = await ctx.reply(
+          await ctx.reply(
             `🎉 *WhatsApp Account Connected Successfully!*\n\n` +
             `✅ *Status:* Connection Verified & Active!\n\n` +
             `👤 *Account Name:* \`${pushName || 'WhatsApp Account'}\`\n` +
@@ -575,10 +516,6 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
               ...getMainMenuKeyboard(true, false)
             }
           ).catch(() => {});
-          if (connMsg && connMsg.message_id) {
-            ctx.session.connectedCardMsgId = connMsg.message_id;
-            ctx.session.connectedCardMsgIds.push(connMsg.message_id);
-          }
         },
 
         // ── Disconnected (only fires if was previously connected) ──────────
@@ -587,9 +524,6 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
           console.log(`[Pairing] User ${userId} disconnected: ${reason}`);
           ctx.session.state = 'AWAITING_PAIRING_NUMBER';
           ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
-
-          // Auto-delete ALL connected status cards on disconnect
-          await purgeAllConnectedMessages(ctx);
 
           const msg = await ctx.reply(
             `⚠️ *WhatsApp Account Disconnected*\n\n` +
@@ -610,32 +544,37 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
         // ── Pairing engine error ───────────────────────────────────────────
         onError: async (errMessage) => {
           if (ctx.session.pairingTimer) clearInterval(ctx.session.pairingTimer);
-          try {
-            await ctx.telegram.editMessageText(
-              ctx.chat.id,
-              statusMsg.message_id,
-              null,
-              `❌ *Pairing Failed*\n\n\`${errMessage}\`\n\nPlease try again.`,
-              {
-                parse_mode: 'Markdown',
-                ...getCancelKeyboard()
-              }
-            );
-          } catch (e) {
+          await ctx.telegram.editMessageText(
+            ctx.chat.id,
+            statusMsg.message_id,
+            null,
+            `❌ *Pairing Failed*\n\n\`${errMessage}\`\n\nPlease try again.`,
+            {
+              parse_mode: 'Markdown',
+              ...getCancelKeyboard()
+            }
+          ).catch(async () => {
             await ctx.reply(
               `❌ *Pairing Failed:* ${errMessage}\n\nPlease try again.`,
               { parse_mode: 'Markdown', ...getMainMenuKeyboard(false) }
-            ).catch(() => {});
-          }
+            );
+          });
         }
       }
     });
   } catch (err) {
-    if (ctx.session.pairingTimer) clearInterval(ctx.session.pairingTimer);
-    await ctx.reply(
+    await ctx.telegram.editMessageText(
+      ctx.chat.id,
+      statusMsg.message_id,
+      null,
       `❌ *Error creating session:*\n\`${err.message}\`\n\nPlease try again.`,
-      { parse_mode: 'Markdown', ...getMainMenuKeyboard(false) }
-    ).catch(() => {});
+      {
+        parse_mode: 'Markdown',
+        ...getCancelKeyboard()
+      }
+    ).catch(async () => {
+      await ctx.reply(`❌ *Error:* ${err.message}`, { parse_mode: 'Markdown', ...getMainMenuKeyboard(false) });
+    });
   }
 }
 

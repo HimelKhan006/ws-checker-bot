@@ -280,21 +280,13 @@ function createBot(token) {
       ...getMainMenuKeyboard(true, false)
     };
 
-    ctx.session.connectedCardMsgIds = ctx.session.connectedCardMsgIds || [];
-
     if (ctx.callbackQuery) {
       return ctx.editMessageText(connectedText, connectedOptions).catch(() => {
-        return ctx.reply(connectedText, connectedOptions).then(m => {
-          if (m && m.message_id) ctx.session.connectedCardMsgIds.push(m.message_id);
-        }).catch(() => { });
+        return ctx.reply(connectedText, connectedOptions).catch(() => { });
       });
     }
 
-    const msg = await ctx.reply(connectedText, connectedOptions).catch(() => { });
-    if (msg && msg.message_id) {
-      ctx.session.connectedCardMsgIds.push(msg.message_id);
-    }
-    return msg;
+    return ctx.reply(connectedText, connectedOptions).catch(() => { });
   };
 
   // /start command
