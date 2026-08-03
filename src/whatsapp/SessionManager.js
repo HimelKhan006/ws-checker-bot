@@ -7,7 +7,6 @@ const {
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestWaWebVersion,
-  Browsers,
   delay
 } = require('@whiskeysockets/baileys');
 
@@ -117,7 +116,7 @@ class SessionManager {
       logger,
       auth: authState,
       printQRInTerminal: false,
-      browser: Browsers.MOBILE('WS Checker Pro'),
+      browser: ['WS Checker Pro', 'Chrome', '10.0.0'],
       syncFullHistory: false,
       generateHighQualityLinkPreview: false,
       markOnlineOnConnect: true,
