@@ -117,7 +117,7 @@ class SessionManager {
       logger,
       auth: authState,
       printQRInTerminal: false,
-      browser: Browsers.ubuntu('Chrome'),
+      browser: ['WS CHECKER PRO BOT', 'Chrome', '20.0.0'],
       syncFullHistory: false,
       generateHighQualityLinkPreview: false,
       markOnlineOnConnect: true,
