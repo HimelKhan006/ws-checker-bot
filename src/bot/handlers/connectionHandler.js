@@ -395,9 +395,9 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
   // Wipe old session silently
   await sessionManager.disconnect(userId, true).catch(() => {});
 
-  // Delete prompt card immediately for clean UX
+  // Delete prompt card immediately for clean UX (protect targetMsgId during auto-refresh)
   const promptIdToDelete = ctx.session.pairingPromptMsgId || ctx.message?.reply_to_message?.message_id;
-  if (promptIdToDelete) {
+  if (promptIdToDelete && promptIdToDelete !== targetMsgId) {
     ctx.telegram.deleteMessage(ctx.chat.id, promptIdToDelete).catch(() => {});
     ctx.session.pairingPromptMsgId = null;
   }
