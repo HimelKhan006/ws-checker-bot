@@ -417,10 +417,10 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
         onPairingCode: async (code) => {
           let secondsLeft = 60;
 
-          const renderMessage = (sec) =>
+          const renderMessage = () =>
             `🔑 *Your WhatsApp Pairing Code:*\n\n` +
             `\`${code}\`\n\n` +
-            `⏱️ *Expires in:* \`${sec} seconds\`\n\n` +
+            `⏱️ *Expires in:* \`60 seconds\`\n\n` +
             `📲 *How to Link Your WhatsApp Account:*\n` +
             `1. Open *WhatsApp* on your mobile phone.\n` +
             `2. Tap *Settings / Menu* ⚙️ ➔ *Linked Devices*.\n` +
@@ -428,56 +428,37 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
             `4. *Type the 8-character code shown above!*\n\n` +
             `_Tap the code above to copy it automatically._`;
 
-          // Edit status card into pairing code card in-place
+          // Edit status card into pairing code card in-place (single edit, no 10s header flashes)
           await ctx.telegram.editMessageText(
             ctx.chat.id,
             statusMsg.message_id,
             null,
-            renderMessage(secondsLeft),
+            renderMessage(),
             {
               parse_mode: 'Markdown',
               ...getCancelKeyboard()
             }
           ).catch(() => {});
 
-          if (ctx.session.pairingTimer) clearInterval(ctx.session.pairingTimer);
+          if (ctx.session.pairingTimer) clearTimeout(ctx.session.pairingTimer);
 
-          ctx.session.pairingTimer = setInterval(async () => {
-            secondsLeft -= 10;
-
-            // Stop countdown if already connected
-            if (sessionManager.isConnected(userId)) {
-              clearInterval(ctx.session.pairingTimer);
-              return;
-            }
-
-            if (secondsLeft > 0) {
+          // 60-second one-shot timer before auto-refreshing expired code
+          ctx.session.pairingTimer = setTimeout(async () => {
+            if (!sessionManager.isConnected(userId)) {
+              // Code expired — auto-refresh in-place
               await ctx.telegram.editMessageText(
                 ctx.chat.id,
                 statusMsg.message_id,
                 null,
-                renderMessage(secondsLeft),
-                { parse_mode: 'Markdown', ...getCancelKeyboard() }
+                `⏰ *Pairing Code Expired!*\n⌛ *Generating a fresh pairing code...*`,
+                { parse_mode: 'Markdown' }
               ).catch(() => {});
-            } else {
-              clearInterval(ctx.session.pairingTimer);
 
-              if (!sessionManager.isConnected(userId)) {
-                // Code expired — auto-refresh in-place
-                await ctx.telegram.editMessageText(
-                  ctx.chat.id,
-                  statusMsg.message_id,
-                  null,
-                  `⏰ *Pairing Code Expired!*\n⌛ *Generating a fresh pairing code...*`,
-                  { parse_mode: 'Markdown' }
-                ).catch(() => {});
-
-                setTimeout(() => {
-                  handlePairingPhoneNumberInput(ctx, statusMsg.message_id);
-                }, 1000);
-              }
+              setTimeout(() => {
+                handlePairingPhoneNumberInput(ctx, statusMsg.message_id);
+              }, 1000);
             }
-          }, 10000);
+          }, 60000);
         },
 
         // ── Connected successfully ─────────────────────────────────────────
