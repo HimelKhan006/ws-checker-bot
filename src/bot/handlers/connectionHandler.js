@@ -423,14 +423,14 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null, attempt = 
           const renderMessage = (fCode, rCode, att) =>
             `🔑 *Your WhatsApp Pairing Code:*\n\n` +
             `\`${fCode || rCode}\`\n\n` +
-            `_(Tap code above to copy plain format: \`${rCode || fCode}\`)_\n\n` +
             `${att > 1 ? `🔄 *Auto-refreshed (attempt #${att}/5)*\n` : ''}` +
             `⏱️ *Expires in:* \`60 seconds\`\n\n` +
             `📲 *How to Link Your WhatsApp Account:*\n` +
             `1. Open *WhatsApp* on your mobile phone.\n` +
             `2. Tap *Settings / Menu* ⚙️ ➔ *Linked Devices*.\n` +
             `3. Tap *Link a Device* ➔ *Link with phone number instead*.\n` +
-            `4. *Type the code shown above!*`;
+            `4. *Type the 8-character code shown above!*\n\n` +
+            `_Tap the code above to copy it automatically._`;
 
           // Edit status card into pairing code card in-place (ZERO message deletion, ZERO screen flashes!)
           await ctx.telegram.editMessageText(
