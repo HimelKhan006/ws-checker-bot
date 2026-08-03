@@ -405,13 +405,6 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
   let statusMsg;
   if (targetMsgId) {
     statusMsg = { message_id: targetMsgId };
-    await ctx.telegram.editMessageText(
-      ctx.chat.id,
-      targetMsgId,
-      null,
-      `⌛ *Refreshing WhatsApp Engine for \`+${cleanNum}\`...*\n\nGenerating your fresh pairing code, please wait...`,
-      { parse_mode: 'Markdown' }
-    ).catch(() => {});
   } else {
     // Send status card as reply to user's phone number message
     statusMsg = await ctx.reply(
@@ -479,18 +472,8 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
               clearInterval(ctx.session.pairingTimer);
 
               if (!sessionManager.isConnected(userId)) {
-                // Code expired — auto-refresh in-place
-                await ctx.telegram.editMessageText(
-                  ctx.chat.id,
-                  statusMsg.message_id,
-                  null,
-                  `⏰ *Pairing Code Expired!*\n⌛ *Generating a fresh pairing code...*`,
-                  { parse_mode: 'Markdown' }
-                ).catch(() => {});
-
-                setTimeout(() => {
-                  handlePairingPhoneNumberInput(ctx, statusMsg.message_id);
-                }, 1000);
+                // Code expired — auto-refresh in-place with ZERO flash/deletion!
+                handlePairingPhoneNumberInput(ctx, statusMsg.message_id);
               }
             }
           }, 10000);
