@@ -52,7 +52,7 @@ function createBot(token) {
       { command: 'profile', description: '👤 Profile' },
       { command: 'leaderboard', description: '🏆 Top Referrers' },
       { command: 'guide', description: '📖 Guide' }
-    ]).catch(() => {});
+    ]).catch(() => { });
   }, 2000);
 
   // Persistent Session Middleware per user (Multi-User Concurrent Isolation)
@@ -250,10 +250,10 @@ function createBot(token) {
 
       if (ctx.callbackQuery) {
         return ctx.editMessageText(menuText, options).catch(() => {
-          return ctx.reply(menuText, options).catch(() => {});
+          return ctx.reply(menuText, options).catch(() => { });
         });
       }
-      return ctx.reply(menuText, options).catch(() => {});
+      return ctx.reply(menuText, options).catch(() => { });
     }
 
     const session = sessionManager.getSession(userId);
@@ -282,11 +282,11 @@ function createBot(token) {
 
     if (ctx.callbackQuery) {
       return ctx.editMessageText(connectedText, connectedOptions).catch(() => {
-        return ctx.reply(connectedText, connectedOptions).catch(() => {});
+        return ctx.reply(connectedText, connectedOptions).catch(() => { });
       });
     }
 
-    return ctx.reply(connectedText, connectedOptions).catch(() => {});
+    return ctx.reply(connectedText, connectedOptions).catch(() => { });
   };
 
   // /start command
@@ -500,10 +500,10 @@ function createBot(token) {
     const userId = ctx.from.id;
     const isConnected = sessionManager.isConnected(userId);
     if (!isConnected) {
-      return ctx.answerCbQuery('⚠️ WhatsApp not connected!', { show_alert: true }).catch(() => {});
+      return ctx.answerCbQuery('⚠️ WhatsApp not connected!', { show_alert: true }).catch(() => { });
     }
 
-    await ctx.answerCbQuery('🔓 Number revealed! Auto-hiding in 10 seconds...').catch(() => {});
+    await ctx.answerCbQuery('🔓 Number revealed! Auto-hiding in 10 seconds...').catch(() => { });
 
     const session = sessionManager.getSession(userId);
     const cleanNum = session?.userJid ? session.userJid.split('@')[0].replace(/\D/g, '') : '';
@@ -518,7 +518,7 @@ function createBot(token) {
     }
 
     const isProfile = ctx.callbackQuery?.message?.text?.includes('Profile') ||
-                      ctx.callbackQuery?.message?.text?.includes('Telegram User Profile');
+      ctx.callbackQuery?.message?.text?.includes('Telegram User Profile');
 
     const renderCard = (revealed) => {
       let numDisplay = '';
@@ -556,7 +556,7 @@ function createBot(token) {
             parse_mode: 'Markdown',
             ...getProfileKeyboard(true, revealed)
           }
-        ).catch(() => {});
+        ).catch(() => { });
       } else {
         return ctx.editMessageText(
           `🚀 *Bot Main Menu*\n\n` +
@@ -569,7 +569,7 @@ function createBot(token) {
             parse_mode: 'Markdown',
             ...getMainMenuKeyboard(true, revealed)
           }
-        ).catch(() => {});
+        ).catch(() => { });
       }
     };
 
@@ -588,7 +588,7 @@ function createBot(token) {
   // Hide Phone Number Callback (Immediately hides number & clears timer)
   bot.action('HIDE_PHONE_NUMBER', async (ctx) => {
     const userId = ctx.from.id;
-    await ctx.answerCbQuery('🔒 Number hidden.').catch(() => {});
+    await ctx.answerCbQuery('🔒 Number hidden.').catch(() => { });
 
     const msgId = ctx.callbackQuery?.message?.message_id;
     const chatId = ctx.chat.id;
@@ -614,7 +614,7 @@ function createBot(token) {
     }
 
     const isProfile = ctx.callbackQuery?.message?.text?.includes('Profile') ||
-                      ctx.callbackQuery?.message?.text?.includes('Telegram User Profile');
+      ctx.callbackQuery?.message?.text?.includes('Telegram User Profile');
 
     if (isProfile) {
       return ctx.editMessageText(
@@ -635,7 +635,7 @@ function createBot(token) {
           parse_mode: 'Markdown',
           ...getProfileKeyboard(true, false)
         }
-      ).catch(() => {});
+      ).catch(() => { });
     } else {
       return ctx.editMessageText(
         `🚀 *Bot Main Menu*\n\n` +
@@ -648,7 +648,7 @@ function createBot(token) {
           parse_mode: 'Markdown',
           ...getMainMenuKeyboard(true, false)
         }
-      ).catch(() => {});
+      ).catch(() => { });
     }
   });
 
@@ -690,7 +690,7 @@ function createBot(token) {
     }
 
     const ids = [...idsToDelete];
-    await Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => {});
+    await Promise.allSettled(ids.map(mId => ctx.telegram.deleteMessage(ctx.chat.id, mId))).catch(() => { });
 
     // STEP 2: Send fresh Main Menu card SECOND
     await sendMainMenu(ctx);

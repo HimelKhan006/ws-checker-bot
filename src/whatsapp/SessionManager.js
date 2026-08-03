@@ -260,11 +260,14 @@ class SessionManager {
       (async () => {
         const cleanNumber = phoneNumber.replace(/\D/g, '');
 
-        // Wait up to 3s for socket to be ready
-        for (let i = 0; i < 30; i++) {
-          if (sessionData.isSocketReady || sock.ws?.isOpen) break;
+        // Wait up to 10 seconds for WebSocket connection to open cleanly
+        for (let i = 0; i < 100; i++) {
+          if (sock.ws?.isOpen || sessionData.state === 'CONNECTED' || sessionData.isSocketReady) break;
           await delay(100);
         }
+
+        // 500ms stabilization delay before requestPairingCode call
+        await delay(500);
 
         let attempts = 0;
         const maxAttempts = 5;
@@ -290,11 +293,11 @@ class SessionManager {
             console.error(`[Engine] Pairing code error (attempt ${attempts}):`, err.message);
             if (attempts >= maxAttempts) {
               if (sessionData.callbacks.onError) {
-                sessionData.callbacks.onError('Failed to generate pairing code. Please try again.');
+                sessionData.callbacks.onError(`Failed to generate pairing code: ${err.message || 'Connection error'}. Please try again.`);
               }
               return;
             }
-            await delay(1000 * attempts); // progressive delay: 1s, 2s, 3s...
+            await delay(1500 * attempts);
           }
         }
       })();
