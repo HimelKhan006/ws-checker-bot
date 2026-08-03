@@ -52,7 +52,13 @@ function registerConnectionHandlers(bot) {
     ctx.session.state = 'AWAITING_PAIRING_NUMBER';
     ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
 
-    const msg = await ctx.editMessageText(
+    const promptId = ctx.callbackQuery?.message?.message_id;
+    if (promptId) {
+      ctx.session.pairingPromptMsgId = promptId;
+      ctx.session.tempMsgIds.push(promptId);
+    }
+
+    await ctx.editMessageText(
       `📱 *Connect WhatsApp*\n\n` +
       `⚠️ *WhatsApp Account Not Connected*\n` +
       `Please connect your WhatsApp account to start checking.\n\n` +
@@ -63,12 +69,7 @@ function registerConnectionHandlers(bot) {
         parse_mode: 'Markdown',
         ...getConnectionMethodKeyboard()
       }
-    );
-
-    if (msg && msg.message_id) {
-      ctx.session.pairingPromptMsgId = msg.message_id;
-      ctx.session.tempMsgIds.push(msg.message_id);
-    }
+    ).catch(() => {});
   });
 
   // ─── Pairing Code Method ───────────────────────────────────────────────────
@@ -77,7 +78,13 @@ function registerConnectionHandlers(bot) {
     ctx.session.state = 'AWAITING_PAIRING_NUMBER';
     ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
 
-    const msg = await ctx.editMessageText(
+    const promptId = ctx.callbackQuery?.message?.message_id;
+    if (promptId) {
+      ctx.session.pairingPromptMsgId = promptId;
+      ctx.session.tempMsgIds.push(promptId);
+    }
+
+    await ctx.editMessageText(
       `🔢 *Connect via Pairing Code*\n\n` +
       `Please *REPLY* to this message with your WhatsApp phone number including country code.\n\n` +
       `*Example:* \`88018XXXXXXXX\`\n\n` +
@@ -86,12 +93,7 @@ function registerConnectionHandlers(bot) {
         parse_mode: 'Markdown',
         ...getCancelKeyboard()
       }
-    );
-
-    if (msg && msg.message_id) {
-      ctx.session.pairingPromptMsgId = msg.message_id;
-      ctx.session.tempMsgIds.push(msg.message_id);
-    }
+    ).catch(() => {});
   });
 
   // ─── QR Code Method ────────────────────────────────────────────────────────
