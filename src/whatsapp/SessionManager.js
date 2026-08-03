@@ -261,14 +261,14 @@ class SessionManager {
       (async () => {
         const cleanNumber = phoneNumber.replace(/\D/g, '');
 
-        // Wait up to 12 seconds for WebSocket connection to open cleanly and stabilize
-        for (let i = 0; i < 120; i++) {
-          if (sock.ws?.isOpen && sock.ws?.readyState === 1) break;
-          await delay(100);
+        // Fast instant WebSocket readiness check
+        for (let i = 0; i < 50; i++) {
+          if (sock.ws?.isOpen || sessionData.isSocketReady) break;
+          await delay(50);
         }
 
-        // 1500ms stabilization delay to ensure Noise Handshake is 100% complete
-        await delay(1500);
+        // Micro-delay for INSTANT execution!
+        await delay(100);
 
         let attempts = 0;
         const maxAttempts = 5;
