@@ -65,7 +65,7 @@ function registerConnectionHandlers(bot) {
     ctx.session.state = 'AWAITING_PAIRING_NUMBER';
     ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
 
-    const msg = await ctx.editMessageText(
+    await ctx.editMessageText(
       `🔢 *Connect via Pairing Code*\n\n` +
       `Please *REPLY* to this message with your WhatsApp phone number including country code.\n\n` +
       `*Example:* \`88018XXXXXXXX\`\n\n` +
@@ -74,11 +74,12 @@ function registerConnectionHandlers(bot) {
         parse_mode: 'Markdown',
         ...getCancelKeyboard()
       }
-    );
+    ).catch(() => {});
 
-    if (msg && msg.message_id) {
-      ctx.session.pairingPromptMsgId = msg.message_id;
-      ctx.session.tempMsgIds.push(msg.message_id);
+    const promptMsgId = ctx.callbackQuery?.message?.message_id;
+    if (promptMsgId) {
+      ctx.session.pairingPromptMsgId = promptMsgId;
+      ctx.session.tempMsgIds.push(promptMsgId);
     }
   });
 
