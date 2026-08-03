@@ -181,7 +181,7 @@ function registerConnectionHandlers(bot) {
             }
 
             // INSTANT Connection Confirmation Card!
-            await ctx.reply(
+            const connMsg = await ctx.reply(
               `🎉 *WhatsApp Account Connected Successfully!*\n\n` +
               `✅ *Status:* Connection Verified & Active!\n\n` +
               `👤 *Account Name:* \`${pushName || 'WhatsApp Account'}\`\n` +
@@ -193,12 +193,21 @@ function registerConnectionHandlers(bot) {
                 ...getMainMenuKeyboard(true, false)
               }
             ).catch(() => {});
+            if (connMsg && connMsg.message_id) {
+              ctx.session.connectedCardMsgId = connMsg.message_id;
+            }
           },
 
           onDisconnected: async (reason) => {
             console.log(`[QR] User ${userId} disconnected: ${reason}`);
             ctx.session.state = 'AWAITING_PAIRING_NUMBER';
             ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
+
+            // Auto-delete connected card on disconnect
+            if (ctx.session.connectedCardMsgId) {
+              await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.connectedCardMsgId).catch(() => {});
+              ctx.session.connectedCardMsgId = null;
+            }
 
             const msg = await ctx.reply(
               `⚠️ *WhatsApp Account Disconnected*\n\n` +
@@ -275,6 +284,12 @@ function registerConnectionHandlers(bot) {
 
     await sessionManager.disconnect(userId, true);
     ctx.session.state = null;
+
+    // Auto-delete connected card on logout
+    if (ctx.session.connectedCardMsgId) {
+      await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.connectedCardMsgId).catch(() => {});
+      ctx.session.connectedCardMsgId = null;
+    }
 
     return ctx.editMessageText(
       `🚪 *WhatsApp Account Logout Complete*\n\n` +
@@ -499,7 +514,7 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
           }
 
           // INSTANT Connection Confirmation Card!
-          await ctx.reply(
+          const connMsg = await ctx.reply(
             `🎉 *WhatsApp Account Connected Successfully!*\n\n` +
             `✅ *Status:* Connection Verified & Active!\n\n` +
             `👤 *Account Name:* \`${pushName || 'WhatsApp Account'}\`\n` +
@@ -511,6 +526,9 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
               ...getMainMenuKeyboard(true, false)
             }
           ).catch(() => {});
+          if (connMsg && connMsg.message_id) {
+            ctx.session.connectedCardMsgId = connMsg.message_id;
+          }
         },
 
         // ── Disconnected (only fires if was previously connected) ──────────
@@ -519,6 +537,12 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
           console.log(`[Pairing] User ${userId} disconnected: ${reason}`);
           ctx.session.state = 'AWAITING_PAIRING_NUMBER';
           ctx.session.tempMsgIds = ctx.session.tempMsgIds || [];
+
+          // Auto-delete connected card on disconnect
+          if (ctx.session.connectedCardMsgId) {
+            await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.connectedCardMsgId).catch(() => {});
+            ctx.session.connectedCardMsgId = null;
+          }
 
           const msg = await ctx.reply(
             `⚠️ *WhatsApp Account Disconnected*\n\n` +
