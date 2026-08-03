@@ -430,7 +430,7 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null, attempt = 
             `2. Tap *Settings / Menu* ⚙️ ➔ *Linked Devices*.\n` +
             `3. Tap *Link a Device* ➔ *Link with phone number instead*.\n` +
             `4. *Type the 8-character code shown above!*\n\n` +
-            `_Tap code above to copy with plain format: \`${rCode || fCode}\`_`;
+            `_Tap the code above to copy it automatically._`;
 
           // Edit status card into pairing code card in-place (ZERO message deletion, ZERO screen flashes!)
           await ctx.telegram.editMessageText(
