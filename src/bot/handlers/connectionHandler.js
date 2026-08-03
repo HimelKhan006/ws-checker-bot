@@ -402,13 +402,25 @@ async function handlePairingPhoneNumberInput(ctx, targetMsgId = null) {
     ctx.session.pairingPromptMsgId = null;
   }
 
-  // Send status card as reply to user's phone number message
-  const statusMsg = await ctx.reply(
-    `⌛ *Initializing WhatsApp Engine for \`+${cleanNum}\`...*\n\nGenerating your pairing code, please wait...`,
-    { reply_to_message_id: ctx.message?.message_id, parse_mode: 'Markdown' }
-  );
-  if (statusMsg && statusMsg.message_id) {
-    ctx.session.tempMsgIds.push(statusMsg.message_id);
+  let statusMsg;
+  if (targetMsgId) {
+    statusMsg = { message_id: targetMsgId };
+    await ctx.telegram.editMessageText(
+      ctx.chat.id,
+      targetMsgId,
+      null,
+      `⌛ *Refreshing WhatsApp Engine for \`+${cleanNum}\`...*\n\nGenerating your fresh pairing code, please wait...`,
+      { parse_mode: 'Markdown' }
+    ).catch(() => {});
+  } else {
+    // Send status card as reply to user's phone number message
+    statusMsg = await ctx.reply(
+      `⌛ *Initializing WhatsApp Engine for \`+${cleanNum}\`...*\n\nGenerating your pairing code, please wait...`,
+      { reply_to_message_id: ctx.message?.message_id, parse_mode: 'Markdown' }
+    );
+    if (statusMsg && statusMsg.message_id) {
+      ctx.session.tempMsgIds.push(statusMsg.message_id);
+    }
   }
 
   try {
