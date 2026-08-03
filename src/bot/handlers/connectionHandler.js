@@ -120,33 +120,16 @@ function registerConnectionHandlers(bot) {
                 `3. Tap *Link a Device* and scan this code.\n\n` +
                 `_Code auto-refreshes if expired._`;
 
+              // Delete previous QR photo message if present to show fresh new QR card
               if (photoMessageId) {
-                // Edit existing QR photo message in-place on the SAME message!
-                try {
-                  await ctx.telegram.editMessageMedia(
-                    ctx.chat.id,
-                    photoMessageId,
-                    null,
-                    {
-                      type: 'photo',
-                      media: { source: qrBuffer },
-                      caption: captionText,
-                      parse_mode: 'Markdown'
-                    },
-                    {
-                      ...getCancelKeyboard()
-                    }
-                  );
-                  return;
-                } catch (e) {
-                  // Fallback to resend if editMessageMedia unsupported by client
-                  ctx.telegram.deleteMessage(ctx.chat.id, photoMessageId).catch(() => {});
-                }
+                ctx.telegram.deleteMessage(ctx.chat.id, photoMessageId).catch(() => {});
+                photoMessageId = null;
               }
 
-              // Initial QR photo creation
+              // Initial prompt card cleanup
               if (initMsgId) {
                 ctx.telegram.deleteMessage(ctx.chat.id, initMsgId).catch(() => {});
+                initMsgId = null;
               }
 
               const sentPhoto = await ctx.replyWithPhoto(
