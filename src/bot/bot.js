@@ -899,7 +899,7 @@ function createBot(token) {
         /Pairing Code|Connect WhatsApp|phone number|Connect via Pairing|WhatsApp Account Not Connected/i.test(replyMsg.text || '')
       );
 
-      if (state === 'AWAITING_PAIRING_NUMBER' || isReplyingToPairingMsg || isPhoneNumber) {
+      if ((state === 'AWAITING_PAIRING_NUMBER' || isReplyingToPairingMsg) && isReplyingToPairingMsg) {
         return handlePairingPhoneNumberInput(ctx);
       }
       return sendMainMenu(ctx);

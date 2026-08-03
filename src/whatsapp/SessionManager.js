@@ -230,9 +230,10 @@ class SessionManager {
         if (isLoggedOut || isConflict || isBadSession) {
           // Real logout — wipe session, notify user
           sessionData.state = 'DISCONNECTED';
+          const onDisconnectedCb = sessionData.callbacks.onDisconnected;
           await this._terminateSession(uid, true);
-          if (sessionData.callbacks.onDisconnected && wasConnected) {
-            sessionData.callbacks.onDisconnected('LOGGED_OUT');
+          if (onDisconnectedCb && wasConnected) {
+            onDisconnectedCb('LOGGED_OUT');
           }
         } else if (isTempError || !isLoggedOut) {
           // Temporary error — exponential backoff reconnect
