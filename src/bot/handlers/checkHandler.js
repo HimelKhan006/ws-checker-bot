@@ -126,11 +126,8 @@ async function handleSingleNumberInput(ctx) {
     );
   }
 
-  // Auto-delete prompt card ONLY (Keep user's input message intact!)
-  if (ctx.session.checkPromptMsgId) {
-    await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.checkPromptMsgId).catch(() => {});
-    ctx.session.checkPromptMsgId = null;
-  }
+  // Keep checking prompt card intact (no message deletion)
+  ctx.session.checkPromptMsgId = null;
 
   const checkingMsg = await ctx.reply(`⌛ *Checking WhatsApp status for \`+${cleanNum}\`...*`, {
     parse_mode: 'Markdown'
@@ -216,11 +213,8 @@ async function handleBulkCheckInput(ctx) {
     );
   }
 
-  // Auto-delete prompt card ONLY (Keep user's input message intact!)
-  if (ctx.session.checkPromptMsgId) {
-    await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.checkPromptMsgId).catch(() => {});
-    ctx.session.checkPromptMsgId = null;
-  }
+  // Keep checking prompt card intact (no message deletion)
+  ctx.session.checkPromptMsgId = null;
 
   const progressMsg = await ctx.reply(
     `⚡ *Processing WhatsApp Registration Check...*\n\n` +
